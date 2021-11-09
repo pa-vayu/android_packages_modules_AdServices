@@ -21,5 +21,6 @@ import android.os.IBinder;
 
 /** @hide */
 oneway interface IInitCodeCallback {
-    void onInitCodeFinished(IBinder token, in Bundle params);
+    void onInitCodeSuccess(IBinder token, in Bundle params);
+    void onInitCodeFailure(int errorCode, String errorMsg );
 }

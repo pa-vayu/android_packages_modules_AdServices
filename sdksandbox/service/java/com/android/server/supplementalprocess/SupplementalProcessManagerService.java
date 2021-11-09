@@ -17,17 +17,19 @@
 package com.android.server.supplementalprocess;
 
 import android.content.Context;
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.supplementalprocess.IInitCodeCallback;
 import android.supplementalprocess.ISupplementalProcessManager;
 import android.util.Log;
 
 import com.android.server.SystemService;
 
-
 /**
  * Implementation of Supplemental Process Manager service.
+ *
  * @hide
  */
 public class SupplementalProcessManagerService extends ISupplementalProcessManager.Stub {
@@ -36,12 +38,31 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private final Context mContext;
 
-    private SupplementalProcessManagerService(Context context) {
+    SupplementalProcessManagerService(Context context) {
         mContext = context;
     }
 
     @Override
-    public void loadCode(String name, String version, Bundle params, IInitCodeCallback callback) {}
+    public void loadCode(String name, String version, Bundle params, IInitCodeCallback callback) {
+        // Barebone logic for loading code. Still incomplete.
+
+        // TODO(b/204991850): ensure code exists
+        // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
+
+        // TODO(b/204991850): actually load the code
+
+        //TODO(b/204991850): <app,code> unit should get unique token
+        sendLoadCodeSuccess(new Binder(), callback);
+    }
+
+    private void sendLoadCodeSuccess(IBinder token, IInitCodeCallback callback) {
+        try {
+            //TODO(b/204991850): params should be returned from SupplementalProcessService
+            callback.onInitCodeSuccess(token, new Bundle());
+        } catch (RemoteException e) {
+            Log.w(TAG, "Failed to send onInitCodeFinished", e);
+        }
+    }
 
     @Override
     public void requestSurfacePackage(int id, IBinder token, int displayId, Bundle params) {}
