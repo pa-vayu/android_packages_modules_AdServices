@@ -16,22 +16,20 @@
 
 package com.android.server.supplementalprocess;
 
-import android.annotation.NonNull;
 import android.content.Context;
-import android.os.RemoteException;
-
 import android.os.Bundle;
 import android.os.IBinder;
-
+import android.supplementalprocess.IInitCodeCallback;
+import android.supplementalprocess.ISupplementalProcessManager;
 import android.util.Log;
-
-import android.supplementalprocess.aidl.IInitCodeCallback;
-import android.supplementalprocess.aidl.ISupplementalProcessManager;
 
 import com.android.server.SystemService;
 
 
-/** @hide **/
+/**
+ * Implementation of Supplemental Process Manager service.
+ * @hide
+ */
 public class SupplementalProcessManagerService extends ISupplementalProcessManager.Stub {
 
     private static final String TAG = "SupplementalProcessManager";
@@ -64,7 +62,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         public void onStart() {
             SupplementalProcessManagerService service =
                     new SupplementalProcessManagerService(getContext());
-            // publishBinderService(Context.SUPPLEMENTAL_PROCESS_SERVICE, service);
+            publishBinderService(Context.SUPPLEMENTAL_PROCESS_SERVICE, service);
             Log.i(TAG, "SupplementalProcessManagerService started!");
         }
     }

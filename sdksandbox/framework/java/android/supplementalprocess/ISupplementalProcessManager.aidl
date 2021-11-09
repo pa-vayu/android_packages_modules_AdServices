@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package android.supplementalprocess.aidl;
+package android.supplementalprocess;
 
 import android.os.Bundle;
 import android.os.IBinder;
+import android.supplementalprocess.IInitCodeCallback;
 
 /** @hide */
-oneway interface IInitCodeCallback {
-    void onInitCodeFinished(IBinder token, in Bundle params);
+interface ISupplementalProcessManager {
+    void loadCode(in String name, in String version, in Bundle params, in IInitCodeCallback callback);
+    void requestSurfacePackage(int id, in IBinder token, int displayId, in Bundle params);
+    void sendData(int id, in Bundle params);
+    void destroyCode(int id);
 }
