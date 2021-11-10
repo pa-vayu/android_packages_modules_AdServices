@@ -18,9 +18,11 @@ package android.supplementalprocess;
 
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.SurfaceControlViewHost;
 
 /** @hide */
-oneway interface IInitCodeCallback {
-    void onInitCodeSuccess(IBinder token, in Bundle params);
-    void onInitCodeFailure(int errorCode, String errorMsg );
+oneway interface IRemoteCodeCallback {
+    void onLoadCodeSuccess(IBinder codeToken, in Bundle params);
+    void onLoadCodeFailure(int errorCode, String errorMsg );
+    void onSurfacePackageReady(in SurfaceControlViewHost.SurfacePackage surfacePackage, int surfacePackageId, in Bundle params);
 }
