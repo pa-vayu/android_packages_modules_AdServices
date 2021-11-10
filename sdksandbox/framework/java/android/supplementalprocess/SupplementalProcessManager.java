@@ -35,4 +35,9 @@ public class SupplementalProcessManager {
         mContext = context;
         mService = binder;
     }
+
+    /** Error code to represent that there is no such code
+     * {@hide}
+     */
+    public static final int LOAD_CODE_NOT_FOUND = 100;
 }
