@@ -16,20 +16,7 @@
 
 package com.android.supplemental.process;
 
-import android.app.Service;
-import android.content.Intent;
-import android.os.IBinder;
+/** @hide */
+oneway interface ISupplementalProcessService {
 
-/** Implementation of Supplemental Process Service. */
-public class SupplementalProcessServiceImpl extends Service {
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return mBinder;
-    }
-
-    private final ISupplementalProcessService.Stub mBinder =
-            new ISupplementalProcessService.Stub() {
-
-            };
 }

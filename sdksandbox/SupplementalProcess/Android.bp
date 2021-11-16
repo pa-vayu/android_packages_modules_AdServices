@@ -17,6 +17,12 @@ package {
 }
 
 filegroup {
+    name: "supplementalprocess_aidl",
+    srcs: ["aidl/**/*.aidl"],
+    path: "aidl",
+}
+
+filegroup {
     name: "supplementalprocess-sources",
     srcs: [
         "src/**/*.java",
@@ -25,7 +31,10 @@ filegroup {
 
 android_app {
     name: "SupplementalProcess",
-    srcs: [":supplementalprocess-sources"],
+    srcs: [
+        ":supplementalprocess-sources",
+        ":supplementalprocess_aidl"
+    ],
     sdk_version: "system_current",
     min_sdk_version: "current", // TODO: change once SDK is finalized
     updatable: true,
