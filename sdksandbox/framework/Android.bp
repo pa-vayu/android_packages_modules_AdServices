@@ -20,6 +20,7 @@ filegroup {
     name: "framework-supplementalprocess-sources",
     srcs: ["java/**/*.aidl"],
     visibility: [
+        "//frameworks/base",
         "//packages/modules/SupplementalProcess:__subpackages__"
     ],
     path: "java",
@@ -38,6 +39,5 @@ java_sdk_library {
     impl_library_visibility: [
         "//packages/modules/SupplementalProcess/service:__subpackages__"
     ],
-    // TODO(b/204991850): Should be removed once we add library tracking api files
-    unsafe_ignore_missing_latest_api: true,
+    apex_available: ["com.android.supplementalprocess"],
 }
