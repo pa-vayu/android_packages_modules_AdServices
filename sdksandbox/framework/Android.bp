@@ -18,7 +18,10 @@ package {
 
 filegroup {
     name: "framework-supplementalprocess-sources",
-    srcs: ["java/**/*.aidl"],
+    srcs: [
+      "java/**/*.aidl",
+      "java/**/*.java"
+    ],
     visibility: [
         "//frameworks/base",
         "//packages/modules/SupplementalProcess:__subpackages__"

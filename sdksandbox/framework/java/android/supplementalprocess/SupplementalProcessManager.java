@@ -14,16 +14,25 @@
  * limitations under the License.
  */
 
-package android.supplementalprocess.aidl;
+package android.supplementalprocess;
 
-import android.os.Bundle;
-import android.os.IBinder;
-import android.supplementalprocess.aidl.IInitCodeCallback;
+import android.annotation.SystemService;
+import android.content.Context;
 
-/** @hide */
-interface ISupplementalProcessManager {
-    void loadCode(in String name, in String version, in Bundle params, in IInitCodeCallback callback);
-    void requestSurfacePackage(int id, in IBinder token, int displayId, in Bundle params);
-    void sendData(int id, in Bundle params);
-    void destroyCode(int id);
+/**
+ * Supplemental Process Manager.
+ * @hide
+ */
+@SystemService(Context.SUPPLEMENTAL_PROCESS_SERVICE)
+public class SupplementalProcessManager {
+    private static final String TAG = "SupplementalProcessManager";
+
+    private final ISupplementalProcessManager mService;
+    private final Context mContext;
+
+    /** {@hide} */
+    public SupplementalProcessManager(Context context, ISupplementalProcessManager binder) {
+        mContext = context;
+        mService = binder;
+    }
 }
