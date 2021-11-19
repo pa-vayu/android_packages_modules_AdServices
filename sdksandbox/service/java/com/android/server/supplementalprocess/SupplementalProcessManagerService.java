@@ -34,6 +34,7 @@ import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.SystemService;
 import com.android.supplemental.process.ISupplementalProcessService;
 
@@ -46,11 +47,11 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private static final String TAG = "SupplementalProcessManager";
 
-    // Todo: Move to to SupplementalProcessServiceImpl once it has landed
+    // TODO(b/204991850): Pass value using dependency injection to override in tests
     private static final String SUPPLEMENTAL_PROCESS_SERVICE_PACKAGE =
             "com.android.supplemental.process";
 
-    // TODO: Move this to SupplementalProcessServiceImpl once it has landed
+    // TODO(b/204991850): Pass value using dependency injection to override in tests
     private static final String SERVICE_INTERFACE =
             "com.android.supplemental.process.SupplementalProcessService";
 
@@ -169,7 +170,8 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     public void destroyCode(int id) {}
 
     @GuardedBy("mLock")
-    private boolean isSupplementalProcessBound(UserHandle callingUser) {
+    @VisibleForTesting
+    boolean isSupplementalProcessBound(UserHandle callingUser) {
         return (mUserSupplementalProcessConnections.containsKey(callingUser));
     }
 
@@ -181,7 +183,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private void bindToSupplementalProcess(UserHandle callingUser) {
         synchronized (mLock) {
-            Log.i(TAG, "Binding to supplemental process");
+            Log.i(TAG, "Binding to supplemental process for " + callingUser.toString());
             if (isSupplementalProcessBound(callingUser)) {
                 Log.i(TAG, "Supplemental process is already bound");
                 return;
@@ -198,7 +200,8 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                 @Override
                 public void onServiceDisconnected(ComponentName name) {
                     // Supplemental process crashed or was killed, system will start it again.
-                    // TODO: Handle restarts differently (e.g. Exponential backoff retry strategy)
+                    // TODO(b/204991850): Handle restarts differently
+                    //  (e.g. Exponential backoff retry strategy)
                     userConnection.supplementalProcessService = null;
                 }
 

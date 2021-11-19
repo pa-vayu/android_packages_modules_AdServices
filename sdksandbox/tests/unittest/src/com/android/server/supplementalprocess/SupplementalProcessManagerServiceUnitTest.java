@@ -16,6 +16,8 @@
 
 package com.android.server.supplementalprocess;
 
+import static android.os.Process.myUserHandle;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
@@ -23,6 +25,7 @@ import static org.junit.Assert.assertThrows;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.UserHandle;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
 import android.view.SurfaceControlViewHost;
@@ -47,6 +50,18 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Before
     public void setup() {
         mService = new SupplementalProcessManagerService(InstrumentationRegistry.getContext());
+    }
+
+    // TODO(b/204991850): Bind to test version of suppl. process instead of the real one
+    @Test
+    public void testSupplementalProcessBinding() throws Exception {
+        UserHandle curUser = myUserHandle();
+
+        // Supplemental process is loaded on demand, so should not be there initially
+        assertThat(mService.isSupplementalProcessBound(curUser)).isFalse();
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        assertThat(mService.isSupplementalProcessBound(curUser)).isTrue();
     }
 
     @Test
