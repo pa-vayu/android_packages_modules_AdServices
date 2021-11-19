@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.supplementalprocess.IInitCodeCallback;
+import android.supplementalprocess.SupplementalProcessManager;
 
 import androidx.test.InstrumentationRegistry;
 
@@ -37,21 +38,37 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     private SupplementalProcessManagerService mService;
 
+    private static final String CODE_PROVIDER_PACKAGE = "com.android.codeprovider";
+
     @Before
     public void setup() {
         mService = new SupplementalProcessManagerService(InstrumentationRegistry.getContext());
     }
 
     @Test
-    public void testInitCodeCallbackIsCalledOnSuccess() throws Exception {
+    public void testLoadCodeIsSuccessful() throws Exception {
         FakeInitCodeCallback callback = new FakeInitCodeCallback();
-        mService.loadCode("abc", "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
         assertThat(callback.isInitCodeSuccessful()).isTrue();
     }
 
-    private class FakeInitCodeCallback extends IInitCodeCallback.Stub {
+    @Test
+    public void testLoadCodePackageDoesNotExist() throws Exception {
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        mService.loadCode("does.not.exist", "1", new Bundle(), callback);
+
+        // Verify loading failed
+        assertThat(callback.isInitCodeSuccessful()).isFalse();
+        assertThat(callback.getErrorCode()).isEqualTo(
+                SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
+        assertThat(callback.getErrorMsg()).contains("not found for loading");
+    }
+
+    private static class FakeInitCodeCallback extends IInitCodeCallback.Stub {
         private final CountDownLatch mCallbackLatch = new CountDownLatch(1);
         private boolean mSuccess;
+        private int mErrorCode;
+        private String mErrorMsg;
 
         @Override
         public void onInitCodeSuccess(IBinder token, Bundle params) {
@@ -62,15 +79,38 @@ public class SupplementalProcessManagerServiceUnitTest {
         @Override
         public void onInitCodeFailure(int errorCode, String errorMsg) {
             mSuccess = false;
+            mErrorCode = errorCode;
+            mErrorMsg = errorMsg;
             mCallbackLatch.countDown();
         }
 
-        boolean isInitCodeSuccessful() throws InterruptedException {
-            // Wait for callback to be called
-            if (!mCallbackLatch.await(2, TimeUnit.SECONDS)) {
-                throw new IllegalStateException("Callback not called within 2 seconds");
+        void waitForCallback() {
+            try {
+                // Wait for callback to be called
+                if (!mCallbackLatch.await(2, TimeUnit.SECONDS)) {
+                    throw new IllegalStateException("Callback not called within 2 seconds");
+                }
+            } catch (InterruptedException e) {
+                throw new IllegalStateException(
+                        "Interrupted while waiting on callback: " + e.getMessage());
             }
+        }
+
+        boolean isInitCodeSuccessful() throws InterruptedException {
+            waitForCallback();
             return mSuccess;
+        }
+
+        int getErrorCode() {
+            waitForCallback();
+            assertThat(mSuccess).isFalse();
+            return mErrorCode;
+        }
+
+        String getErrorMsg() {
+            waitForCallback();
+            assertThat(mSuccess).isFalse();
+            return mErrorMsg;
         }
     }
 }

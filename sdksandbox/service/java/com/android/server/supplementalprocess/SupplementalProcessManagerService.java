@@ -17,12 +17,15 @@
 package com.android.server.supplementalprocess;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.supplementalprocess.IInitCodeCallback;
 import android.supplementalprocess.ISupplementalProcessManager;
+import android.supplementalprocess.SupplementalProcessManager;
 import android.util.Log;
 
 import com.android.server.SystemService;
@@ -46,13 +49,35 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     public void loadCode(String name, String version, Bundle params, IInitCodeCallback callback) {
         // Barebone logic for loading code. Still incomplete.
 
-        // TODO(b/204991850): ensure code exists
+        // Step 1: fetch the installed code in device
+
+        final ApplicationInfo info = getCodeInfo(name);
+        if (info == null) {
+            String errorMsg = name + " not found for loading";
+            Log.w(TAG, errorMsg);
+            sendLoadCodeError(SupplementalProcessManager.LOAD_CODE_NOT_FOUND, errorMsg, callback);
+            return;
+        }
         // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
 
-        // TODO(b/204991850): actually load the code
-
+        // Step 2: create identity for the code
         //TODO(b/204991850): <app,code> unit should get unique token
+
+        // Step 3: invoke CodeLoaderService to load the code
+        // TODO(b/204991850): invoke code loader to actually load the code
+
         sendLoadCodeSuccess(new Binder(), callback);
+    }
+
+    private ApplicationInfo getCodeInfo(String packageName) {
+        // TODO(b/204991850): code info should be version specific too
+        try {
+            // TODO(b/204991850): update this when PM provides better API for getting code info
+            return mContext.getPackageManager().getApplicationInfo(packageName, /*flags=*/0);
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return null;
+        }
+
     }
 
     private void sendLoadCodeSuccess(IBinder token, IInitCodeCallback callback) {
@@ -60,7 +85,15 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             //TODO(b/204991850): params should be returned from SupplementalProcessService
             callback.onInitCodeSuccess(token, new Bundle());
         } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onInitCodeFinished", e);
+            Log.w(TAG, "Failed to send onInitCodeSuccess", e);
+        }
+    }
+
+    private void sendLoadCodeError(int errorCode, String errorMsg, IInitCodeCallback callback) {
+        try {
+            callback.onInitCodeFailure(errorCode, errorMsg);
+        } catch (RemoteException e) {
+            Log.w(TAG, "Failed to send onInitCodeFailure", e);
         }
     }
 
