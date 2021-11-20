@@ -38,7 +38,7 @@ android_test {
         "libdexmakerjvmtiagent",
         "libstaticjvmtiagent",
     ],
-    java_resources: [
+    data: [
       ":SampleCodeProviderApp",
     ],
     min_sdk_version: "current",
