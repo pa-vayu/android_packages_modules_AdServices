@@ -18,12 +18,12 @@ package android.supplementalprocess;
 
 import android.os.Bundle;
 import android.os.IBinder;
-import android.supplementalprocess.IInitCodeCallback;
+import android.supplementalprocess.IRemoteCodeCallback;
 
 /** @hide */
 interface ISupplementalProcessManager {
-    void loadCode(in String name, in String version, in Bundle params, in IInitCodeCallback callback);
-    void requestSurfacePackage(int id, in IBinder token, int displayId, in Bundle params);
+    void loadCode(in String name, in String version, in Bundle params, in IRemoteCodeCallback callback);
+    void requestSurfacePackage(in IBinder codeToken, in IBinder hostToken, int displayId, in Bundle params);
     void sendData(int id, in Bundle params);
     void destroyCode(int id);
 }

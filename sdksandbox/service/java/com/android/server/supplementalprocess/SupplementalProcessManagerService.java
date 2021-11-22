@@ -23,9 +23,10 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.supplementalprocess.IInitCodeCallback;
+import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.ISupplementalProcessManager;
 import android.supplementalprocess.SupplementalProcessManager;
+import android.util.ArrayMap;
 import android.util.Log;
 
 import com.android.server.SystemService;
@@ -41,12 +42,16 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private final Context mContext;
 
+    // TODO(b/204991850): this map should be against RemoteCode object containing
+    // more details about the RemoteCode being loaded, e.g., owner UID.
+    private final ArrayMap<IBinder, IRemoteCodeCallback> mRemoteCodeCallbacks = new ArrayMap<>();
+
     SupplementalProcessManagerService(Context context) {
         mContext = context;
     }
 
     @Override
-    public void loadCode(String name, String version, Bundle params, IInitCodeCallback callback) {
+    public void loadCode(String name, String version, Bundle params, IRemoteCodeCallback callback) {
         // Barebone logic for loading code. Still incomplete.
 
         // Step 1: fetch the installed code in device
@@ -62,11 +67,13 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
         // Step 2: create identity for the code
         //TODO(b/204991850): <app,code> unit should get unique token
+        IBinder codeToken = new Binder();
+        mRemoteCodeCallbacks.put(codeToken, callback);
 
         // Step 3: invoke CodeLoaderService to load the code
         // TODO(b/204991850): invoke code loader to actually load the code
 
-        sendLoadCodeSuccess(new Binder(), callback);
+        sendLoadCodeSuccess(codeToken, callback);
     }
 
     private ApplicationInfo getCodeInfo(String packageName) {
@@ -80,25 +87,43 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     }
 
-    private void sendLoadCodeSuccess(IBinder token, IInitCodeCallback callback) {
+    private void sendLoadCodeSuccess(IBinder codeToken, IRemoteCodeCallback callback) {
         try {
             //TODO(b/204991850): params should be returned from SupplementalProcessService
-            callback.onInitCodeSuccess(token, new Bundle());
+            callback.onLoadCodeSuccess(codeToken, new Bundle());
         } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onInitCodeSuccess", e);
+            Log.w(TAG, "Failed to send onLoadCodeSuccess", e);
         }
     }
 
-    private void sendLoadCodeError(int errorCode, String errorMsg, IInitCodeCallback callback) {
+    private void sendLoadCodeError(int errorCode, String errorMsg, IRemoteCodeCallback callback) {
         try {
-            callback.onInitCodeFailure(errorCode, errorMsg);
+            callback.onLoadCodeFailure(errorCode, errorMsg);
         } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onInitCodeFailure", e);
+            Log.w(TAG, "Failed to send onLoadCodeFailure", e);
         }
     }
 
     @Override
-    public void requestSurfacePackage(int id, IBinder token, int displayId, Bundle params) {}
+    public void requestSurfacePackage(IBinder codeToken, IBinder hostToken,
+                int displayId, Bundle params) {
+        if (!mRemoteCodeCallbacks.containsKey(codeToken)) {
+            throw new SecurityException("codeToken is invalid");
+        }
+        IRemoteCodeCallback callback = mRemoteCodeCallbacks.get(codeToken);
+        // TODO(b/204991850): forward the request to supplemental process
+        sendSurfacePackageReady(callback);
+    }
+
+    void sendSurfacePackageReady(IRemoteCodeCallback callback) {
+        try {
+            // TODO(b/204991850): send real surface package, which should be provided by
+            // supplemental process
+            callback.onSurfacePackageReady(null, 0, new Bundle());
+        } catch (RemoteException e) {
+            Log.w(TAG, "Failed to send onSurfacePackageReady callback", e);
+        }
+    }
 
     @Override
     public void sendData(int id, Bundle params) {}

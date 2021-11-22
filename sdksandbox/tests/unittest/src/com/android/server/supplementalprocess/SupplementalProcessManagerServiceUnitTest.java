@@ -18,10 +18,14 @@ package com.android.server.supplementalprocess;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertThrows;
+
+import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.supplementalprocess.IInitCodeCallback;
+import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
+import android.view.SurfaceControlViewHost;
 
 import androidx.test.InstrumentationRegistry;
 
@@ -49,7 +53,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testLoadCodeIsSuccessful() throws Exception {
         FakeInitCodeCallback callback = new FakeInitCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
-        assertThat(callback.isInitCodeSuccessful()).isTrue();
+        assertThat(callback.isLoadCodeSuccessful()).isTrue();
     }
 
     @Test
@@ -58,36 +62,78 @@ public class SupplementalProcessManagerServiceUnitTest {
         mService.loadCode("does.not.exist", "1", new Bundle(), callback);
 
         // Verify loading failed
-        assertThat(callback.isInitCodeSuccessful()).isFalse();
+        assertThat(callback.isLoadCodeSuccessful()).isFalse();
         assertThat(callback.getErrorCode()).isEqualTo(
                 SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
         assertThat(callback.getErrorMsg()).contains("not found for loading");
     }
 
-    private static class FakeInitCodeCallback extends IInitCodeCallback.Stub {
-        private final CountDownLatch mCallbackLatch = new CountDownLatch(1);
-        private boolean mSuccess;
+    @Test
+    public void testRequestSurfacePackageCodeNotLoaded() throws Exception {
+        // Trying to request package without using proper codeToken should fail
+        SecurityException thrown = assertThrows(
+                SecurityException.class,
+                () -> mService.requestSurfacePackage(new Binder(), new Binder(),
+                                                     0, new Bundle())
+        );
+        assertThat(thrown).hasMessageThat().contains("codeToken is invalid");
+    }
+
+    @Test
+    public void testRequestSurfacePackage() throws Exception {
+        // 1. We first need to collect a proper codeToken by calling loadCode
+
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        assertThat(callback.isLoadCodeSuccessful()).isTrue();
+
+        // Verify codeToken is not null
+        IBinder codeToken = callback.getCodeToken();
+        assertThat(codeToken).isNotNull();
+
+        // 2. Call request package with the retrieved codeToken
+        mService.requestSurfacePackage(codeToken, new Binder(), 0, new Bundle());
+        assertThat(callback.isRequestSurfacePackageSuccessful()).isTrue();
+    }
+
+    private static class FakeInitCodeCallback extends IRemoteCodeCallback.Stub {
+        private final CountDownLatch mLoadCodeLatch = new CountDownLatch(1);
+        private final CountDownLatch mSurfacePackageLatch = new CountDownLatch(1);
+
+        private boolean mLoadCodeSuccess;
+        private boolean mSurfacePackageSuccess;
+
         private int mErrorCode;
         private String mErrorMsg;
 
+        private IBinder mCodeToken;
+
         @Override
-        public void onInitCodeSuccess(IBinder token, Bundle params) {
-            mSuccess = true;
-            mCallbackLatch.countDown();
+        public void onLoadCodeSuccess(IBinder codeToken, Bundle params) {
+            mCodeToken = codeToken;
+            mLoadCodeSuccess = true;
+            mLoadCodeLatch.countDown();
         }
 
         @Override
-        public void onInitCodeFailure(int errorCode, String errorMsg) {
-            mSuccess = false;
+        public void onLoadCodeFailure(int errorCode, String errorMsg) {
+            mLoadCodeSuccess = false;
             mErrorCode = errorCode;
             mErrorMsg = errorMsg;
-            mCallbackLatch.countDown();
+            mLoadCodeLatch.countDown();
         }
 
-        void waitForCallback() {
+        @Override
+        public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
+                    int surfacePackageId, Bundle params) {
+            mSurfacePackageSuccess = true;
+            mSurfacePackageLatch.countDown();
+        }
+
+        void waitForLatch(CountDownLatch latch) {
             try {
                 // Wait for callback to be called
-                if (!mCallbackLatch.await(2, TimeUnit.SECONDS)) {
+                if (!latch.await(2, TimeUnit.SECONDS)) {
                     throw new IllegalStateException("Callback not called within 2 seconds");
                 }
             } catch (InterruptedException e) {
@@ -96,21 +142,33 @@ public class SupplementalProcessManagerServiceUnitTest {
             }
         }
 
-        boolean isInitCodeSuccessful() throws InterruptedException {
-            waitForCallback();
-            return mSuccess;
+        boolean isLoadCodeSuccessful() throws InterruptedException {
+            waitForLatch(mLoadCodeLatch);
+            return mLoadCodeSuccess;
         }
 
         int getErrorCode() {
-            waitForCallback();
-            assertThat(mSuccess).isFalse();
+            waitForLatch(mLoadCodeLatch);
+            assertThat(mLoadCodeSuccess).isFalse();
             return mErrorCode;
         }
 
         String getErrorMsg() {
-            waitForCallback();
-            assertThat(mSuccess).isFalse();
+            waitForLatch(mLoadCodeLatch);
+            assertThat(mLoadCodeSuccess).isFalse();
             return mErrorMsg;
         }
+
+        IBinder getCodeToken() {
+            waitForLatch(mLoadCodeLatch);
+            assertThat(mLoadCodeSuccess).isTrue();
+            return mCodeToken;
+        }
+
+        boolean isRequestSurfacePackageSuccessful() throws InterruptedException {
+            waitForLatch(mSurfacePackageLatch);
+            return mSurfacePackageSuccess;
+        }
+
     }
 }
