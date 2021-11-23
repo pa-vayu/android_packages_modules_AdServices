@@ -17,19 +17,123 @@
 package com.android.supplemental.process;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.os.Binder;
+import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Process;
+import android.os.RemoteException;
+import android.util.ArrayMap;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
+
+import java.lang.reflect.InvocationTargetException;
+import java.util.Map;
 
 /** Implementation of Supplemental Process Service. */
 public class SupplementalProcessServiceImpl extends Service {
+
+    private static final String TAG = "SupplementalProcess";
+
+    private final Object mLock = new Object();
+
+    @GuardedBy("mLock")
+    private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
 
     @Override
     public IBinder onBind(Intent intent) {
         return mBinder;
     }
 
-    private final ISupplementalProcessService.Stub mBinder =
-            new ISupplementalProcessService.Stub() {
+    @Override
+    public void onCreate() {
+        mBinder = new SupplementalProcessServiceDelegate();
+    }
 
-            };
+    // Used for unit testing.
+    @VisibleForTesting
+    int getCallingUid() {
+        return Binder.getCallingUidOrThrow();
+    }
+
+    // Used for unit testing, where this service will not be bound.
+    @VisibleForTesting
+    Context getContext() {
+        return getApplicationContext();
+    }
+
+    private ISupplementalProcessService.Stub mBinder;
+
+    private void enforceCallerIsSystemServer() {
+        if (getCallingUid() != Process.SYSTEM_UID) {
+            throw new SecurityException(
+                    "Only system_server is allowed to call this API, actual calling uid is "
+                            + getCallingUid());
+        }
+        Binder.clearCallingIdentity();
+    }
+
+    private void sendLoadError(ISupplementalProcessToSupplementalProcessManagerCallback callback,
+            int errorCode, String message) {
+        try {
+            callback.onLoadCodeError(errorCode, message);
+        } catch (RemoteException e) {
+            Log.e(TAG, "Could not send onLoadCodeError");
+        }
+    }
+
+    @GuardedBy("mLock")
+    private void loadCodeLocked(IBinder codeToken, @NonNull ApplicationInfo applicationInfo,
+            @NonNull Bundle params,
+            @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+        if (mHeldCode.containsKey(codeToken)) {
+            sendLoadError(callback,
+                    ISupplementalProcessToSupplementalProcessManagerCallback
+                            .LOAD_CODE_ALREADY_LOADED,
+                    "Already loaded code for package " + applicationInfo.packageName);
+            return;
+        }
+
+        try {
+            // TODO(b/204989872): Use separate classloaders.
+            Class<?> clz = Class.forName(CodeHolder.class.getName());
+            CodeHolder codeHolder = (CodeHolder) clz.getDeclaredConstructor().newInstance();
+            codeHolder.init(
+                    getContext(),
+                    params,
+                    callback);
+            mHeldCode.put(codeToken, codeHolder);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            Log.e(TAG, "Failed to find: " + CodeHolder.class.getName(), e);
+        } catch (InstantiationException  | IllegalAccessException | InvocationTargetException e) {
+            Log.e(TAG, "Failed to instantiate " + CodeHolder.class.getName(), e);
+        }
+    }
+
+    void loadCode(IBinder codeToken, ApplicationInfo applicationInfo, Bundle params,
+                  ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+        enforceCallerIsSystemServer();
+        synchronized (mLock) {
+            loadCodeLocked(codeToken, applicationInfo, params, callback);
+        }
+    }
+
+    final class SupplementalProcessServiceDelegate extends ISupplementalProcessService.Stub {
+
+        @Override
+        public void loadCode(
+                @NonNull IBinder codeToken,
+                @NonNull ApplicationInfo applicationInfo,
+                @NonNull Bundle params,
+                @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+            SupplementalProcessServiceImpl.this.loadCode(
+                    codeToken, applicationInfo, params, callback);
+        }
+    }
 }

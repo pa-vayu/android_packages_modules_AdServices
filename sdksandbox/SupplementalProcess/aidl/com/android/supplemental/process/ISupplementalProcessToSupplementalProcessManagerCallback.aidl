@@ -16,14 +16,12 @@
 
 package com.android.supplemental.process;
 
-import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
-import android.os.IBinder;
-
-import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
 
 /** @hide */
-oneway interface ISupplementalProcessService {
-    void loadCode(IBinder codeToken, in ApplicationInfo info, in Bundle params,
-                  in ISupplementalProcessToSupplementalProcessManagerCallback callback);
+oneway interface ISupplementalProcessToSupplementalProcessManagerCallback {
+    const int LOAD_CODE_ALREADY_LOADED = 1;
+
+    void onLoadCodeSuccess(in Bundle params);
+    void onLoadCodeError(int errorCode, in String errorMessage);
 }

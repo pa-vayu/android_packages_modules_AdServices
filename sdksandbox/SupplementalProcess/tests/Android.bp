@@ -12,38 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package {
-    default_applicable_licenses: ["Android-Apache-2.0"],
-}
+android_test {
+    name: "SupplementalProcessTests",
 
-filegroup {
-    name: "supplementalprocess_aidl",
-    srcs: ["aidl/**/*.aidl"],
-    path: "aidl",
-}
+    target_sdk_version: "current",
+    min_sdk_version: "current",
 
-filegroup {
-    name: "supplementalprocess-sources",
     srcs: [
         "src/**/*.java",
-    ],
-}
-
-android_app {
-    name: "SupplementalProcess",
-    srcs: [
+        ":framework-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
         ":supplementalprocess-sources",
-        ":supplementalprocess_aidl"
     ],
+
     libs: [
-        "framework-annotations-lib",
+        "android.test.base",
+        "android.test.runner",
+        "truth-prebuilt",
     ],
+
     static_libs: [
-        "androidx.annotation_annotation"
+        "androidx.test.rules",
+        "androidx.test.ext.truth",
+        "androidx.test.ext.junit",
     ],
-    sdk_version: "system_current",
-    min_sdk_version: "current", // TODO: change once SDK is finalized
-    updatable: true,
-    certificate: "platform", // TODO(b/204989872): sign with a supplemental_process key
-    apex_available: ["com.android.supplementalprocess"],
 }
