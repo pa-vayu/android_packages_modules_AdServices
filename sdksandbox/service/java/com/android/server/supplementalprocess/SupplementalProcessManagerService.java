@@ -16,10 +16,7 @@
 
 package com.android.server.supplementalprocess;
 
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
@@ -33,10 +30,8 @@ import android.supplementalprocess.SupplementalProcessManager;
 import android.util.ArrayMap;
 import android.util.Log;
 
-import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.SystemService;
-import com.android.supplemental.process.ISupplementalProcessService;
 
 /**
  * Implementation of Supplemental Process Manager service.
@@ -47,37 +42,17 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private static final String TAG = "SupplementalProcessManager";
 
-    // TODO(b/204991850): Pass value using dependency injection to override in tests
-    private static final String SUPPLEMENTAL_PROCESS_SERVICE_PACKAGE =
-            "com.android.supplemental.process";
-
-    // TODO(b/204991850): Pass value using dependency injection to override in tests
-    private static final String SERVICE_INTERFACE =
-            "com.android.supplemental.process.SupplementalProcessService";
-
     private final Context mContext;
+    private final SupplementalProcessServiceProvider mServiceProvider;
 
     // TODO(b/204991850): this map should be against RemoteCode object containing
     // more details about the RemoteCode being loaded, e.g., owner UID.
     private final ArrayMap<IBinder, IRemoteCodeCallback> mRemoteCodeCallbacks = new ArrayMap<>();
 
-    private final Object mLock = new Object();
-
-    private static class SupplementalProcessConnection {
-        public ServiceConnection serviceConnection = null;
-        public ISupplementalProcessService supplementalProcessService = null;
-
-        boolean isConnected() {
-            return (serviceConnection != null && supplementalProcessService != null);
-        }
-    }
-
-    @GuardedBy("mLock")
-    private ArrayMap<UserHandle, SupplementalProcessConnection>
-            mUserSupplementalProcessConnections = new ArrayMap<>();
-
-    SupplementalProcessManagerService(Context context) {
+    SupplementalProcessManagerService(Context context,
+            SupplementalProcessServiceProvider provider) {
         mContext = context;
+        mServiceProvider = provider;
     }
 
     @Override
@@ -85,7 +60,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         final UserHandle callingUser = Binder.getCallingUserHandle();
         final long token = Binder.clearCallingIdentity();
         try {
-            bindToSupplementalProcess(callingUser);
+            mServiceProvider.bindService(callingUser);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
@@ -169,82 +144,11 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     @Override
     public void destroyCode(int id) {}
 
-    @GuardedBy("mLock")
+    // TODO(b/207771670): This API should be reomoved once we have unit test for
+    //  SupplementalProcessServiceProvider
     @VisibleForTesting
     boolean isSupplementalProcessBound(UserHandle callingUser) {
-        return (mUserSupplementalProcessConnections.containsKey(callingUser));
-    }
-
-    @GuardedBy("mLock")
-    private boolean isSupplementalProcessConnected(UserHandle callingUser) {
-        return (isSupplementalProcessBound(callingUser)
-                && mUserSupplementalProcessConnections.get(callingUser).isConnected());
-    }
-
-    private void bindToSupplementalProcess(UserHandle callingUser) {
-        synchronized (mLock) {
-            Log.i(TAG, "Binding to supplemental process for " + callingUser.toString());
-            if (isSupplementalProcessBound(callingUser)) {
-                Log.i(TAG, "Supplemental process is already bound");
-                return;
-            }
-
-            SupplementalProcessConnection userConnection = new SupplementalProcessConnection();
-            userConnection.serviceConnection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(ComponentName name, IBinder service) {
-                    userConnection.supplementalProcessService =
-                            ISupplementalProcessService.Stub.asInterface(service);
-                }
-
-                @Override
-                public void onServiceDisconnected(ComponentName name) {
-                    // Supplemental process crashed or was killed, system will start it again.
-                    // TODO(b/204991850): Handle restarts differently
-                    //  (e.g. Exponential backoff retry strategy)
-                    userConnection.supplementalProcessService = null;
-                }
-
-                @Override
-                public void onBindingDied(ComponentName name) {
-                    final long token = Binder.clearCallingIdentity();
-                    try {
-                        unbindFromSupplementalProcess(callingUser);
-                        bindToSupplementalProcess(callingUser);
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            };
-
-            final Intent intent = new Intent(SERVICE_INTERFACE);
-            intent.setPackage(SUPPLEMENTAL_PROCESS_SERVICE_PACKAGE);
-
-            boolean bound = mContext.bindServiceAsUser(intent, userConnection.serviceConnection,
-                    Context.BIND_AUTO_CREATE, callingUser);
-            if (!bound) {
-                Log.e(TAG, "Could not find supplemental process service.");
-                return;
-            }
-
-            mUserSupplementalProcessConnections.put(callingUser, userConnection);
-            Log.i(TAG, "Supplemental process has been bound");
-        }
-    }
-
-    // TODO(b/204991850): Call when the last app using supplemental process dies
-    private void unbindFromSupplementalProcess(UserHandle callingUser) {
-        synchronized (mLock) {
-            Log.i(TAG, "Unbinding from supplemental process");
-            if (isSupplementalProcessBound(callingUser)) {
-                SupplementalProcessConnection userConnection =
-                        mUserSupplementalProcessConnections.get(callingUser);
-                mContext.unbindService(userConnection.serviceConnection);
-
-                mUserSupplementalProcessConnections.remove(callingUser);
-            }
-            Log.i(TAG, "Supplemental process has been unbound");
-        }
+        return mServiceProvider.isServiceBound(callingUser);
     }
 
     /** @hide */
@@ -255,8 +159,10 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
         @Override
         public void onStart() {
+            SupplementalProcessServiceProvider provider =
+                    new SupplementalProcessServiceProviderImpl(getContext());
             SupplementalProcessManagerService service =
-                    new SupplementalProcessManagerService(getContext());
+                    new SupplementalProcessManagerService(getContext(), provider);
             publishBinderService(Context.SUPPLEMENTAL_PROCESS_SERVICE, service);
             Log.i(TAG, "SupplementalProcessManagerService started!");
         }

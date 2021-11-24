@@ -22,6 +22,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
 
+import android.content.Context;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -49,9 +50,15 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Before
     public void setup() {
-        mService = new SupplementalProcessManagerService(InstrumentationRegistry.getContext());
+        Context context = InstrumentationRegistry.getContext();
+        // TODO(b/204991850): Replace with fake provider
+        SupplementalProcessServiceProvider provider =
+                new SupplementalProcessServiceProviderImpl(context);
+        mService = new SupplementalProcessManagerService(context, provider);
     }
 
+
+    // TODO(b/207771670): Move this test to SupplementalProcessServiceProviderUnitTest
     // TODO(b/204991850): Bind to test version of suppl. process instead of the real one
     @Test
     public void testSupplementalProcessBinding() throws Exception {
