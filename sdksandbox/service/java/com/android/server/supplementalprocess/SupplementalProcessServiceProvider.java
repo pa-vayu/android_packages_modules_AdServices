@@ -16,7 +16,7 @@
 
 package com.android.server.supplementalprocess;
 
-import android.os.UserHandle;
+import android.os.IBinder;
 
 import com.android.supplemental.process.ISupplementalProcessService;
 
@@ -26,19 +26,17 @@ import com.android.supplemental.process.ISupplementalProcessService;
 public interface SupplementalProcessServiceProvider {
     /**
      * Initiate a connection with SupplementalProcessService
+     * and register the app using the service through
+     * {@code appBinder}
      */
-    void bindService(UserHandle callingUser);
+    void bindService(int callingUid, IBinder appBinder);
     /**
      * Return SupplementalProcessService connected for
      * {@code callingUser}
      */
-    ISupplementalProcessService getService(UserHandle callingUser);
+    ISupplementalProcessService getService(int callingUid);
     /**
      * Check if service is connected
      */
-    boolean isServiceBound(UserHandle callingUser);
-    /**
-     * Disconnect from the service
-     */
-    void unbindService(UserHandle callingUser);
+    boolean isServiceBound(int callingUid);
 }

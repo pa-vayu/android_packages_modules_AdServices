@@ -16,8 +16,6 @@
 
 package com.android.server.supplementalprocess;
 
-import static android.os.Process.myUserHandle;
-
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
@@ -63,18 +61,6 @@ public class SupplementalProcessManagerServiceUnitTest {
         SupplementalProcessServiceProvider provider =
                 new FakeSupplementalProcessProvider(mSupplementalProcessService);
         mService = new SupplementalProcessManagerService(context, provider);
-    }
-
-    // TODO(b/207771670): Move this test to SupplementalProcessServiceProviderUnitTest
-    @Test
-    public void testSupplementalProcessBinding() throws Exception {
-        UserHandle curUser = myUserHandle();
-
-        // Supplemental process is loaded on demand, so should not be there initially
-        assertThat(mService.isSupplementalProcessBound(curUser)).isFalse();
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
-        assertThat(mService.isSupplementalProcessBound(curUser)).isTrue();
     }
 
     @Test
@@ -215,7 +201,8 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public void bindService(UserHandle callingUser) {
+        public void bindService(int callingUid, IBinder appBinder) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             if (mService.containsKey(callingUser)) {
                 return;
             }
@@ -224,18 +211,15 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public boolean isServiceBound(UserHandle callingUser) {
+        public boolean isServiceBound(int callingUid) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             return mService.containsKey(callingUser);
         }
 
         @Override
-        public ISupplementalProcessService getService(UserHandle callingUser) {
+        public ISupplementalProcessService getService(int callingUid) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             return mService.get(callingUser);
-        }
-
-        @Override
-        public void unbindService(UserHandle callingUser) {
-            mService.remove(callingUser);
         }
     }
 

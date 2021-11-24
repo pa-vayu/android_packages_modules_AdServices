@@ -23,7 +23,6 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.os.UserHandle;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.ISupplementalProcessManager;
 import android.supplementalprocess.SupplementalProcessManager;
@@ -31,7 +30,6 @@ import android.util.ArrayMap;
 import android.util.Log;
 import android.view.SurfaceControlViewHost;
 
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.server.SystemService;
 import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
 import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
@@ -63,16 +61,16 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     @Override
     public void loadCode(String name, String version, Bundle params, IRemoteCodeCallback callback) {
-        final UserHandle callingUser = Binder.getCallingUserHandle();
+        final int callingUid = Binder.getCallingUid();
         final long token = Binder.clearCallingIdentity();
         try {
-            loadCodeWithClearIdentity(callingUser, name, version, params, callback);
+            loadCodeWithClearIdentity(callingUid, name, version, params, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    private void loadCodeWithClearIdentity(UserHandle callingUser, String name, String version,
+    private void loadCodeWithClearIdentity(int callingUid, String name, String version,
             Bundle params, IRemoteCodeCallback callback) {
         // Step 1: fetch the installed code in device
 
@@ -91,12 +89,12 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         mCallbackToApp.put(codeToken, callback);
 
         // Step 3: invoke CodeLoaderService to load the code
-        mServiceProvider.bindService(callingUser);
+        mServiceProvider.bindService(callingUid, callback.asBinder());
         TwoWayCallback twoWayCallback = new TwoWayCallback(codeToken);
         mTwoWayCallbckToRemoteCode.put(codeToken, twoWayCallback);
         try {
             // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
-            mServiceProvider.getService(callingUser).loadCode(codeToken, info, "", params,
+            mServiceProvider.getService(callingUid).loadCode(codeToken, info, "", params,
                     twoWayCallback);
         } catch (RemoteException e) {
             String errorMsg = "Failed to contact SupplementalProcessService";
@@ -220,13 +218,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     @Override
     public void destroyCode(int id) {}
-
-    // TODO(b/207771670): This API should be reomoved once we have unit test for
-    //  SupplementalProcessServiceProvider
-    @VisibleForTesting
-    boolean isSupplementalProcessBound(UserHandle callingUser) {
-        return mServiceProvider.isServiceBound(callingUser);
-    }
 
     /** @hide */
     public static class Lifecycle extends SystemService {
