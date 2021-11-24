@@ -22,6 +22,11 @@ java_library {
         "java/**/*.java",
         ":supplementalprocess_aidl"
     ],
+    aidl: {
+        include_dirs: [
+            "frameworks/base/core/java", // For android.os.IBinders
+        ],
+    },
     sdk_version: "system_server_current",
     libs: [
         "framework-supplementalprocess.impl",

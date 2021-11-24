@@ -23,15 +23,22 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.RemoteException;
 import android.os.UserHandle;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
+import android.util.ArrayMap;
 import android.view.SurfaceControlViewHost;
 
 import androidx.test.InstrumentationRegistry;
+
+import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
+import com.android.supplemental.process.ISupplementalProcessService;
+import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -45,21 +52,20 @@ import java.util.concurrent.TimeUnit;
 public class SupplementalProcessManagerServiceUnitTest {
 
     private SupplementalProcessManagerService mService;
+    private FakeSupplementalProcessService mSupplementalProcessService;
 
     private static final String CODE_PROVIDER_PACKAGE = "com.android.codeprovider";
 
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getContext();
-        // TODO(b/204991850): Replace with fake provider
+        mSupplementalProcessService = new FakeSupplementalProcessService();
         SupplementalProcessServiceProvider provider =
-                new SupplementalProcessServiceProviderImpl(context);
+                new FakeSupplementalProcessProvider(mSupplementalProcessService);
         mService = new SupplementalProcessManagerService(context, provider);
     }
 
-
     // TODO(b/207771670): Move this test to SupplementalProcessServiceProviderUnitTest
-    // TODO(b/204991850): Bind to test version of suppl. process instead of the real one
     @Test
     public void testSupplementalProcessBinding() throws Exception {
         UserHandle curUser = myUserHandle();
@@ -75,6 +81,8 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testLoadCodeIsSuccessful() throws Exception {
         FakeInitCodeCallback callback = new FakeInitCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        // Assume SupplementalProcess loads successfully
+        mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
     }
 
@@ -104,9 +112,9 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test
     public void testRequestSurfacePackage() throws Exception {
         // 1. We first need to collect a proper codeToken by calling loadCode
-
         FakeInitCodeCallback callback = new FakeInitCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
 
         // Verify codeToken is not null
@@ -115,6 +123,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         // 2. Call request package with the retrieved codeToken
         mService.requestSurfacePackage(codeToken, new Binder(), 0, new Bundle());
+        mSupplementalProcessService.sendSurfacePackageReady();
         assertThat(callback.isRequestSurfacePackageSuccessful()).isTrue();
     }
 
@@ -190,6 +199,83 @@ public class SupplementalProcessManagerServiceUnitTest {
         boolean isRequestSurfacePackageSuccessful() throws InterruptedException {
             waitForLatch(mSurfacePackageLatch);
             return mSurfacePackageSuccess;
+        }
+    }
+
+    /**
+     * Fake service provider that returns local instance of {@link FakeSupplementalProcessService}
+     */
+    private static class FakeSupplementalProcessProvider
+            implements SupplementalProcessServiceProvider {
+        private final ISupplementalProcessService mSupplementalProcessService;
+        private final ArrayMap<UserHandle, ISupplementalProcessService> mService = new ArrayMap<>();
+
+        FakeSupplementalProcessProvider(ISupplementalProcessService service) {
+            mSupplementalProcessService = service;
+        }
+
+        @Override
+        public void bindService(UserHandle callingUser) {
+            if (mService.containsKey(callingUser)) {
+                return;
+            }
+
+            mService.put(callingUser, mSupplementalProcessService);
+        }
+
+        @Override
+        public boolean isServiceBound(UserHandle callingUser) {
+            return mService.containsKey(callingUser);
+        }
+
+        @Override
+        public ISupplementalProcessService getService(UserHandle callingUser) {
+            return mService.get(callingUser);
+        }
+
+        @Override
+        public void unbindService(UserHandle callingUser) {
+            mService.remove(callingUser);
+        }
+    }
+
+    private static class FakeSupplementalProcessService extends ISupplementalProcessService.Stub {
+        private ISupplementalProcessToSupplementalProcessManagerCallback mCodeToManagerCallback;
+        private final ISupplementalProcessManagerToSupplementalProcessCallback
+                mManagerToCodeCallback;
+        private IBinder mCodeToken;
+
+        boolean mSurfacePackageRequested = false;
+
+        FakeSupplementalProcessService() {
+            mManagerToCodeCallback = new FakeManagerToCodeCallback();
+        }
+
+        @Override
+        public void loadCode(IBinder codeToken, ApplicationInfo info, Bundle params,
+                  ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+            mCodeToken = codeToken;
+            mCodeToManagerCallback = callback;
+        }
+
+        void sendLoadCodeSuccessful() throws RemoteException {
+            mCodeToManagerCallback.onLoadCodeSuccess(new Bundle(), mManagerToCodeCallback);
+        }
+
+        void sendSurfacePackageReady() throws RemoteException {
+            if (mSurfacePackageRequested) {
+                mCodeToManagerCallback.onSurfacePackageReady(
+                        /*hostToken=*/null, /*displayId=*/0, /*params=*/null);
+            }
+        }
+
+        private class FakeManagerToCodeCallback extends
+                ISupplementalProcessManagerToSupplementalProcessCallback.Stub {
+            @Override
+            public void onSurfacePackageRequested(IBinder hostToken,
+                    int displayId, Bundle extraParams) {
+                mSurfacePackageRequested = true;
+            }
         }
 
     }

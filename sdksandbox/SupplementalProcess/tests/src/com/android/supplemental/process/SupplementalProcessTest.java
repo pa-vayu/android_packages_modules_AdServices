@@ -24,6 +24,7 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Process;
+import android.view.SurfaceControlViewHost;
 
 import androidx.test.InstrumentationRegistry;
 
@@ -97,7 +98,8 @@ public class SupplementalProcessTest {
         }
 
         @Override
-        public void onLoadCodeSuccess(Bundle params)  {
+        public void onLoadCodeSuccess(Bundle params,
+                ISupplementalProcessManagerToSupplementalProcessCallback callback)  {
             mLatch.countDown();
             mSuccessful = true;
         }
@@ -108,6 +110,11 @@ public class SupplementalProcessTest {
             mErrorCode = errorCode;
             mSuccessful = false;
         }
+
+        @Override
+        public void onSurfacePackageReady(
+                SurfaceControlViewHost.SurfacePackage surfacePackage,
+                int displayId, Bundle params) {}
     }
 
     private static class FakeSupplementalProcessService extends SupplementalProcessServiceImpl {
