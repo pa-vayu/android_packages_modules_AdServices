@@ -30,8 +30,10 @@ import android.util.ArrayMap;
 import android.util.Log;
 import android.view.SurfaceControlViewHost;
 
+import com.android.internal.annotations.GuardedBy;
 import com.android.server.SystemService;
 import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
+import com.android.supplemental.process.ISupplementalProcessService;
 import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
 
 /**
@@ -44,14 +46,14 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     private static final String TAG = "SupplementalProcessManager";
 
     private final Context mContext;
+
+    @GuardedBy("mServiceProvider")
     private final SupplementalProcessServiceProvider mServiceProvider;
 
-    // TODO(b/204991850): guard by lock
-    // For one way communication for ManagerService to app for each codeToken
-    private final ArrayMap<IBinder, IRemoteCodeCallback> mCallbackToApp = new ArrayMap<>();
-    // TODO(b/204991850): guard by lock
-    // For two way communication between ManagerService and remote code for each codeToken
-    private final ArrayMap<IBinder, TwoWayCallback> mTwoWayCallbckToRemoteCode = new ArrayMap();
+    // For communication between app<-ManagerService->RemoteCode for each codeToken
+    // TODO(b/208824602): Remove from this map when an app dies.
+    @GuardedBy("mAppAndRemoteCodeLinks")
+    private final ArrayMap<IBinder, AppAndRemoteCodeLink> mAppAndRemoteCodeLinks = new ArrayMap();
 
     SupplementalProcessManagerService(Context context,
             SupplementalProcessServiceProvider provider) {
@@ -72,78 +74,45 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private void loadCodeWithClearIdentity(int callingUid, String name, String version,
             Bundle params, IRemoteCodeCallback callback) {
-        // Step 1: fetch the installed code in device
+        // Step 1: create identity for the code
+        // TODO(b/204991850): what if app tries to load same code twice? Identity should be
+        // unique for each <uid, code> pair.
+        final IBinder codeToken = new Binder();
+        // Use the code token to establish a link between the app<-Manager->RemoteCode
+        final AppAndRemoteCodeLink link = new AppAndRemoteCodeLink(codeToken, callback);
+        synchronized (mAppAndRemoteCodeLinks) {
+            mAppAndRemoteCodeLinks.put(codeToken, link);
+        }
 
+        // Step 2: fetch the installed code in device
         final ApplicationInfo info = getCodeInfo(name);
         if (info == null) {
             String errorMsg = name + " not found for loading";
             Log.w(TAG, errorMsg);
-            sendLoadCodeError(SupplementalProcessManager.LOAD_CODE_NOT_FOUND, errorMsg, callback);
+            link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_NOT_FOUND, errorMsg);
             return;
         }
         // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
 
-        // Step 2: create identity for the code
-        //TODO(b/204991850): <app,code> unit should get unique token
-        IBinder codeToken = new Binder();
-        mCallbackToApp.put(codeToken, callback);
-
         // Step 3: invoke CodeLoaderService to load the code
-        mServiceProvider.bindService(callingUid, callback.asBinder());
-        TwoWayCallback twoWayCallback = new TwoWayCallback(codeToken);
-        mTwoWayCallbckToRemoteCode.put(codeToken, twoWayCallback);
         try {
-            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
-            mServiceProvider.getService(callingUid).loadCode(codeToken, info, "", params,
-                    twoWayCallback);
+            synchronized (mServiceProvider) {
+                // TODO(b/204991850): we should merge bindService() and getService() together
+                mServiceProvider.bindService(callingUid, codeToken);
+                ISupplementalProcessService service = mServiceProvider.getService(callingUid);
+                if (service == null) {
+                    link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
+                            "Failed to bind to SupplementalProcess service");
+                    return;
+                }
+                // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
+                service.loadCode(codeToken, info, "", params, link);
+            }
         } catch (RemoteException e) {
             String errorMsg = "Failed to contact SupplementalProcessService";
             Log.w(TAG, errorMsg, e);
-            sendLoadCodeError(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
-                    errorMsg, callback);
-        }
-    }
-
-    /**
-     * A callback object to establish a two-way communication channel between
-     * SupplementalProcessManagerService and remote code loaded in SupplementalProcess.
-     *
-     * This object provides interface to remote code to callback into
-     * SupplementalProcessManager. During loadCode, remote code calls back with a callback
-     * which allows communication in the other direction.
-     *
-     * This bidirectional channel is maintained for each {@code codeToken} generated.
-     */
-    private class TwoWayCallback extends
-            ISupplementalProcessToSupplementalProcessManagerCallback.Stub {
-        // The codeToken for which this channel has been created
-        private final IBinder mCodeToken;
-        private ISupplementalProcessManagerToSupplementalProcessCallback mManagerToCodeCallback;
-
-        TwoWayCallback(IBinder codeToken) {
-            mCodeToken = codeToken;
-        }
-
-        @Override
-        public void onLoadCodeSuccess(Bundle params,
-                ISupplementalProcessManagerToSupplementalProcessCallback callback) {
-            // Keep reference to callback so that manager service can
-            // callback to remote code loaded.
-            mManagerToCodeCallback = callback;
-            sendLoadCodeSuccess(mCodeToken, params);
-        }
-
-        @Override
-        public void onLoadCodeError(int errorCode, String errorMsg) {}
-
-        @Override
-        public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
-                int surfacePackageId, Bundle params) {
-            sendSurfacePackageReady(mCodeToken, surfacePackage, surfacePackageId, params);
-        }
-
-        ISupplementalProcessManagerToSupplementalProcessCallback getManagerToRemoteCodeCallback() {
-            return mManagerToCodeCallback;
+            link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
+                    errorMsg);
         }
     }
 
@@ -154,23 +123,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             return mContext.getPackageManager().getApplicationInfo(packageName, /*flags=*/0);
         } catch (PackageManager.NameNotFoundException ignored) {
             return null;
-        }
-
-    }
-
-    private void sendLoadCodeSuccess(IBinder codeToken, Bundle params) {
-        try {
-            mCallbackToApp.get(codeToken).onLoadCodeSuccess(codeToken, params);
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onLoadCodeSuccess", e);
-        }
-    }
-
-    private void sendLoadCodeError(int errorCode, String errorMsg, IRemoteCodeCallback callback) {
-        try {
-            callback.onLoadCodeFailure(errorCode, errorMsg);
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onLoadCodeFailure", e);
         }
     }
 
@@ -189,27 +141,12 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private void requestSurfacePackageWithClearIdentity(IBinder codeToken,
             IBinder hostToken, int displayId, Bundle params) {
-        if (!mTwoWayCallbckToRemoteCode.containsKey(codeToken)) {
-            throw new SecurityException("codeToken is invalid");
-        }
-        TwoWayCallback twoWayCallback = mTwoWayCallbckToRemoteCode.get(codeToken);
-        try {
-            twoWayCallback.getManagerToRemoteCodeCallback()
-                    .onSurfacePackageRequested(hostToken, displayId, params);
-        } catch (RemoteException e) {
-            //TODO(b/204991850): sendSurfacePackageError
-            Log.w(TAG, "Failed to request surface package", e);
-        }
-    }
-
-    void sendSurfacePackageReady(IBinder codeToken,
-            SurfaceControlViewHost.SurfacePackage surfacePackage,
-            int surfacePackageId, Bundle params) {
-        try {
-            mCallbackToApp.get(codeToken).onSurfacePackageReady(
-                    surfacePackage, surfacePackageId, params);
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send onSurfacePackageReady callback", e);
+        synchronized (mAppAndRemoteCodeLinks) {
+            if (!mAppAndRemoteCodeLinks.containsKey(codeToken)) {
+                throw new SecurityException("codeToken is invalid");
+            }
+            final AppAndRemoteCodeLink link = mAppAndRemoteCodeLinks.get(codeToken);
+            link.requestSurfacePackageToCode(hostToken, displayId, params);
         }
     }
 
@@ -218,6 +155,100 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     @Override
     public void destroyCode(int id) {}
+
+    /**
+     * A callback object to establish a link between the app calling into manager service
+     * and the remote code being loaded in SupplementalProcess.
+     *
+     * Overview of communication:
+     * 1. App to ManagerService: App calls into this service via app context
+     * 2. ManagerService to App: {@link AppAndRemoteCodeLink} holds reference to
+     *    {@link IRemoteCodeCallback} object which provides call back into the app.
+     * 3. RemoteCode to ManagerService: {@link AppAndRemoteCodeLink} extends
+     *    {@link ISupplementalProcessToSupplementalProcessManagerCallback} interface. We
+     *    pass on this object to {@link ISupplementalProcessService} so that remote code
+     *    can call back into ManagerService
+     * 4. ManagerService to RemoteCode: When cod is loaded for the first time and remote
+     *    code calls back with successful result, it also sends reference to
+     *    {@link ISupplementalProcessManagerToSupplementalProcessCallback} callback object.
+     *    ManagerService uses this to callback into the remote code.
+     *
+     * We maintain a link for each unique {app, remoteCode} pair, which is identified with
+     * {@code codeToken}.
+     */
+    private class AppAndRemoteCodeLink extends
+            ISupplementalProcessToSupplementalProcessManagerCallback.Stub {
+        // The codeToken for which this channel has been created
+        private final IBinder mCodeToken;
+        private final IRemoteCodeCallback mManagerToAppCallback;
+
+        @GuardedBy("this")
+        private ISupplementalProcessManagerToSupplementalProcessCallback mManagerToCodeCallback;
+
+        AppAndRemoteCodeLink(IBinder codeToken, IRemoteCodeCallback managerToAppCallback) {
+            mCodeToken = codeToken;
+            mManagerToAppCallback = managerToAppCallback;
+        }
+
+        @Override
+        public void onLoadCodeSuccess(Bundle params,
+                ISupplementalProcessManagerToSupplementalProcessCallback callback) {
+            // Keep reference to callback so that manager service can
+            // callback to remote code loaded.
+            synchronized (this) {
+                mManagerToCodeCallback = callback;
+            }
+            sendLoadCodeSuccessToApp(params);
+        }
+
+        @Override
+        public void onLoadCodeError(int errorCode, String errorMsg) {}
+
+        @Override
+        public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
+                int surfacePackageId, Bundle params) {
+            sendSurfacePackageReadyToApp(surfacePackage, surfacePackageId, params);
+        }
+
+        private void sendLoadCodeSuccessToApp(Bundle params) {
+            try {
+                mManagerToAppCallback.onLoadCodeSuccess(mCodeToken, params);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Failed to send onLoadCodeSuccess", e);
+            }
+        }
+
+        void sendLoadCodeErrorToApp(int errorCode, String errorMsg) {
+            try {
+                mManagerToAppCallback.onLoadCodeFailure(errorCode, errorMsg);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Failed to send onLoadCodeFailure", e);
+            }
+        }
+
+        private void sendSurfacePackageReadyToApp(
+                SurfaceControlViewHost.SurfacePackage surfacePackage,
+                int surfacePackageId, Bundle params) {
+            try {
+                mManagerToAppCallback.onSurfacePackageReady(surfacePackage,
+                        surfacePackageId, params);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Failed to send onSurfacePackageReady callback", e);
+            }
+        }
+
+        void requestSurfacePackageToCode(IBinder hostToken, int displayId, Bundle params) {
+            try {
+                synchronized (this) {
+                    mManagerToCodeCallback.onSurfacePackageRequested(hostToken, displayId, params);
+                }
+            } catch (RemoteException e) {
+                Log.w(TAG, "Failed to requestSurfacePackage", e);
+                sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
+                        "Failed to requestSurfacePackage" + e.getMessage());
+            }
+        }
+    }
 
     /** @hide */
     public static class Lifecycle extends SystemService {
