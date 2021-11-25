@@ -33,6 +33,8 @@ import androidx.annotation.NonNull;
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 
+import dalvik.system.DexClassLoader;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
@@ -41,9 +43,7 @@ public class SupplementalProcessServiceImpl extends Service {
 
     private static final String TAG = "SupplementalProcess";
 
-    private final Object mLock = new Object();
-
-    @GuardedBy("mLock")
+    @GuardedBy("mHeldCode")
     private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
 
     @Override
@@ -88,40 +88,53 @@ public class SupplementalProcessServiceImpl extends Service {
         }
     }
 
-    @GuardedBy("mLock")
-    private void loadCodeLocked(IBinder codeToken, @NonNull ApplicationInfo applicationInfo,
+    private ClassLoader getClassLoader(ApplicationInfo appInfo) {
+        return new DexClassLoader(appInfo.sourceDir, null, null, getClass().getClassLoader());
+    }
+
+    private void loadCodeInternal(IBinder codeToken, @NonNull ApplicationInfo applicationInfo,
+            @NonNull String codeProviderClassName,
             @NonNull Bundle params,
             @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
-        if (mHeldCode.containsKey(codeToken)) {
-            sendLoadError(callback,
-                    ISupplementalProcessToSupplementalProcessManagerCallback
-                            .LOAD_CODE_ALREADY_LOADED,
-                    "Already loaded code for package " + applicationInfo.packageName);
-            return;
+        synchronized (mHeldCode) {
+            if (mHeldCode.containsKey(codeToken)) {
+                sendLoadError(callback,
+                        ISupplementalProcessToSupplementalProcessManagerCallback
+                                .LOAD_CODE_ALREADY_LOADED,
+                        "Already loaded code for package " + applicationInfo.packageName);
+                return;
+            }
         }
 
         try {
-            // TODO(b/204989872): Use separate classloaders.
-            Class<?> clz = Class.forName(CodeHolder.class.getName());
+            ClassLoader loader = getClassLoader(applicationInfo);
+            Class<?> clz = Class.forName(CodeHolder.class.getName(), true, loader);
             CodeHolder codeHolder = (CodeHolder) clz.getDeclaredConstructor().newInstance();
             codeHolder.init(
                     getContext(),
                     params,
-                    callback);
-            mHeldCode.put(codeToken, codeHolder);
+                    callback,
+                    codeProviderClassName,
+                    loader);
+            synchronized (mHeldCode) {
+                mHeldCode.put(codeToken, codeHolder);
+            }
         } catch (ClassNotFoundException | NoSuchMethodException e) {
-            Log.e(TAG, "Failed to find: " + CodeHolder.class.getName(), e);
+            sendLoadError(callback,
+                    ISupplementalProcessToSupplementalProcessManagerCallback.LOAD_CODE_NOT_FOUND,
+                    "Failed to find: " + CodeHolder.class.getName());
         } catch (InstantiationException  | IllegalAccessException | InvocationTargetException e) {
-            Log.e(TAG, "Failed to instantiate " + CodeHolder.class.getName(), e);
+            sendLoadError(callback,
+                    ISupplementalProcessToSupplementalProcessManagerCallback
+                            .LOAD_CODE_INSTANTIATION_ERROR,
+                    "Failed to instantiate " + CodeHolder.class.getName() + ": " + e);
         }
     }
 
-    void loadCode(IBinder codeToken, ApplicationInfo applicationInfo, Bundle params,
-                  ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+    void loadCode(IBinder codeToken, ApplicationInfo applicationInfo, String codeProviderClassName,
+            Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
         enforceCallerIsSystemServer();
-        synchronized (mLock) {
-            loadCodeLocked(codeToken, applicationInfo, params, callback);
-        }
+        loadCodeInternal(codeToken, applicationInfo, codeProviderClassName, params, callback);
     }
 
     final class SupplementalProcessServiceDelegate extends ISupplementalProcessService.Stub {
@@ -130,10 +143,11 @@ public class SupplementalProcessServiceImpl extends Service {
         public void loadCode(
                 @NonNull IBinder codeToken,
                 @NonNull ApplicationInfo applicationInfo,
+                @NonNull String codeProviderClassName,
                 @NonNull Bundle params,
                 @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
             SupplementalProcessServiceImpl.this.loadCode(
-                    codeToken, applicationInfo, params, callback);
+                    codeToken, applicationInfo, codeProviderClassName, params, callback);
         }
     }
 }

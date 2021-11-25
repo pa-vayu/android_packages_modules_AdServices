@@ -14,23 +14,35 @@
  * limitations under the License.
  */
 
-package com.android.supplemental.process;
+package com.android.testprovider;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.supplementalprocess.CodeProvider;
 import android.view.SurfaceControlViewHost;
 
-import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
+import java.util.concurrent.Executor;
 
-/** @hide */
-oneway interface ISupplementalProcessToSupplementalProcessManagerCallback {
-    const int LOAD_CODE_ALREADY_LOADED = 1;
-    const int LOAD_CODE_PROVIDER_INIT_ERROR = 2;
-    const int LOAD_CODE_NOT_FOUND = 3;
-    const int LOAD_CODE_INSTANTIATION_ERROR = 3;
+public class TestProvider extends CodeProvider {
 
-    void onLoadCodeSuccess(in Bundle params, in ISupplementalProcessManagerToSupplementalProcessCallback callback);
-    void onLoadCodeError(int errorCode, in String errorMessage);
+    public TestProvider(Context context) {
+        super(context);
+    }
 
-    void onSurfacePackageReady(in SurfaceControlViewHost.SurfacePackage surfacePackage, int surfacePackageId, in Bundle params);
+    @Override
+    public void initCode(Bundle params, Executor executor, InitCodeCallback callback) {
+        callback.onInitCodeFinished(params);
+    }
+
+    @Override
+    public SurfaceControlViewHost.SurfacePackage getSurfacePackage(IBinder hostToken, int displayId,
+            Bundle params) {
+        return null;
+    }
+
+    @Override
+    public void onExtraDataReceived(Bundle extraData) {
+
+    }
 }

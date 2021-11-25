@@ -252,8 +252,8 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public void loadCode(IBinder codeToken, ApplicationInfo info, Bundle params,
-                  ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+        public void loadCode(IBinder codeToken, ApplicationInfo info, String codeProviderClassName,
+                Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
             mCodeToken = codeToken;
             mCodeToManagerCallback = callback;
         }

@@ -24,6 +24,7 @@ import com.android.supplemental.process.ISupplementalProcessToSupplementalProces
 
 /** @hide */
 oneway interface ISupplementalProcessService {
-    void loadCode(IBinder codeToken, in ApplicationInfo info, in Bundle params,
+    void loadCode(IBinder codeToken, in ApplicationInfo info, in String codeProviderClassName,
+                  in Bundle params,
                   in ISupplementalProcessToSupplementalProcessManagerCallback callback);
 }

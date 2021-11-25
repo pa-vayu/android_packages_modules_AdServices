@@ -95,7 +95,8 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         TwoWayCallback twoWayCallback = new TwoWayCallback(codeToken);
         mTwoWayCallbckToRemoteCode.put(codeToken, twoWayCallback);
         try {
-            mServiceProvider.getService(callingUser).loadCode(codeToken, info, params,
+            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
+            mServiceProvider.getService(callingUser).loadCode(codeToken, info, "", params,
                     twoWayCallback);
         } catch (RemoteException e) {
             String errorMsg = "Failed to contact SupplementalProcessService";

@@ -33,10 +33,11 @@ android_app {
     name: "SupplementalProcess",
     srcs: [
         ":supplementalprocess-sources",
-        ":supplementalprocess_aidl"
+        ":supplementalprocess_aidl",
     ],
     libs: [
         "framework-annotations-lib",
+        "framework-supplementalprocess",
     ],
     static_libs: [
         "androidx.annotation_annotation"

@@ -42,19 +42,21 @@ public class SupplementalProcessTest {
     private Context mContext = InstrumentationRegistry.getContext();
     private SupplementalProcessServiceImpl mService;
     private ApplicationInfo mApplicationInfo;
+    private static final String CODE_PROVIDER_CLASS = "com.android.testprovider.TestProvider";
 
     @Before
     public void setup() throws Exception {
         mService = new FakeSupplementalProcessService();
         mApplicationInfo = mContext.getPackageManager().getApplicationInfo(
-                "com.android.tests.supplemental.process", 0);
+                "com.android.testprovider", 0);
     }
 
     @Test
     public void testLoadingSuccess() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
         RemoteCode mRemoteCode = new RemoteCode(latch);
-        mService.loadCode(new Binder(), mApplicationInfo, new Bundle(), mRemoteCode);
+        mService.loadCode(new Binder(), mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode);
         assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode.mSuccessful).isTrue();
     }
@@ -64,8 +66,10 @@ public class SupplementalProcessTest {
         CountDownLatch latch = new CountDownLatch(2);
         RemoteCode mRemoteCode = new RemoteCode(latch);
         IBinder duplicateToken = new Binder();
-        mService.loadCode(duplicateToken, mApplicationInfo, new Bundle(), mRemoteCode);
-        mService.loadCode(duplicateToken, mApplicationInfo, new Bundle(), mRemoteCode);
+        mService.loadCode(duplicateToken, mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode);
+        mService.loadCode(duplicateToken, mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode);
         assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode.mSuccessful).isFalse();
         assertThat(mRemoteCode.mErrorCode).isEqualTo(
@@ -78,8 +82,10 @@ public class SupplementalProcessTest {
         RemoteCode mRemoteCode1 = new RemoteCode(latch1);
         CountDownLatch latch2 = new CountDownLatch(1);
         RemoteCode mRemoteCode2 = new RemoteCode(latch2);
-        mService.loadCode(new Binder(), mApplicationInfo, new Bundle(), mRemoteCode1);
-        mService.loadCode(new Binder(), mApplicationInfo, new Bundle(), mRemoteCode2);
+        mService.loadCode(new Binder(), mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode1);
+        mService.loadCode(new Binder(), mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode2);
         assertThat(latch1.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode1.mSuccessful).isTrue();
         assertThat(latch2.await(1, TimeUnit.MINUTES)).isTrue();
