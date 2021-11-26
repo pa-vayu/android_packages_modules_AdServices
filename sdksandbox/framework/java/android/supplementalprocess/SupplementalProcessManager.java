@@ -83,9 +83,11 @@ public class SupplementalProcessManager {
         }
     }
 
-    /** Error code to represent that there is no such code
-     */
+    /** Error code to represent that there is no such code */
     public static final int LOAD_CODE_NOT_FOUND = 100;
+
+    /** Error code to represent code is already loaded */
+    public static final int LOAD_CODE_ALREADY_LOADED = 101;
 
     public static final int LOAD_CODE_INTERNAL_ERROR = 500;
 

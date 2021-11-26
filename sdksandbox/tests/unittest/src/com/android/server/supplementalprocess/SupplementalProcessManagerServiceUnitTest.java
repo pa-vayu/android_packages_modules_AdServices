@@ -85,6 +85,62 @@ public class SupplementalProcessManagerServiceUnitTest {
     }
 
     @Test
+    public void testLoadCode_errorFromSupplementalProcess() throws Exception {
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mSupplementalProcessService.sendLoadCodeError();
+
+        // Verify loading failed
+        assertThat(callback.isLoadCodeSuccessful()).isFalse();
+        assertThat(callback.getLoadCodeErrorCode()).isEqualTo(
+                SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR);
+    }
+
+    @Test
+    public void testLoadCode_successOnFirstLoad_errorOnLoadAgain() throws Exception {
+        // Load it once
+        {
+            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            // Assume SupplementalProcess loads successfully
+            mSupplementalProcessService.sendLoadCodeSuccessful();
+            assertThat(callback.isLoadCodeSuccessful()).isTrue();
+        }
+
+        // Load it again
+        {
+            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            // Verify loading failed
+            assertThat(callback.isLoadCodeSuccessful()).isFalse();
+            assertThat(callback.getLoadCodeErrorCode()).isEqualTo(
+                    SupplementalProcessManager.LOAD_CODE_ALREADY_LOADED);
+            assertThat(callback.getLoadCodeErrorMsg()).contains("has been loaded already");
+        }
+    }
+
+    @Test
+    public void testLoadCode_errorOnFirstLoad_canBeLoadedAgain() throws Exception {
+        // Load code, but make it fail
+        {
+            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            // Assume SupplementalProcess load fails
+            mSupplementalProcessService.sendLoadCodeError();
+            assertThat(callback.isLoadCodeSuccessful()).isFalse();
+        }
+
+        // Caller should be able to retry loading the code
+        {
+            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            // Assume SupplementalProcess loads successfully
+            mSupplementalProcessService.sendLoadCodeSuccessful();
+            assertThat(callback.isLoadCodeSuccessful()).isTrue();
+        }
+    }
+
+    @Test
     public void testRequestSurfacePackageCodeNotLoaded() throws Exception {
         // Trying to request package without using proper codeToken should fail
         SecurityException thrown = assertThrows(
@@ -255,7 +311,6 @@ public class SupplementalProcessManagerServiceUnitTest {
         private ISupplementalProcessToSupplementalProcessManagerCallback mCodeToManagerCallback;
         private final ISupplementalProcessManagerToSupplementalProcessCallback
                 mManagerToCodeCallback;
-        private IBinder mCodeToken;
 
         boolean mSurfacePackageRequested = false;
 
@@ -266,7 +321,6 @@ public class SupplementalProcessManagerServiceUnitTest {
         @Override
         public void loadCode(IBinder codeToken, ApplicationInfo info, String codeProviderClassName,
                 Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
-            mCodeToken = codeToken;
             mCodeToManagerCallback = callback;
         }
 
@@ -274,8 +328,9 @@ public class SupplementalProcessManagerServiceUnitTest {
             mCodeToManagerCallback.onLoadCodeSuccess(new Bundle(), mManagerToCodeCallback);
         }
 
-        void sendSurfacePackageError(int errorCode, String errorMsg) throws RemoteException {
-            mCodeToManagerCallback.onSurfacePackageError(errorCode, errorMsg);
+        void sendLoadCodeError() throws RemoteException {
+            mCodeToManagerCallback.onLoadCodeError(
+                    SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR, "Internal error");
         }
 
         void sendSurfacePackageReady() throws RemoteException {
@@ -283,6 +338,10 @@ public class SupplementalProcessManagerServiceUnitTest {
                 mCodeToManagerCallback.onSurfacePackageReady(
                         /*hostToken=*/null, /*displayId=*/0, /*params=*/null);
             }
+        }
+
+        void sendSurfacePackageError(int errorCode, String errorMsg) throws RemoteException {
+            mCodeToManagerCallback.onSurfacePackageError(errorCode, errorMsg);
         }
 
         private class FakeManagerToCodeCallback extends

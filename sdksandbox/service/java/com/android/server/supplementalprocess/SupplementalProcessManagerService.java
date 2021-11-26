@@ -28,6 +28,7 @@ import android.supplementalprocess.ISupplementalProcessManager;
 import android.supplementalprocess.SupplementalProcessManager;
 import android.util.ArrayMap;
 import android.util.Log;
+import android.util.Pair;
 import android.view.SurfaceControlViewHost;
 
 import com.android.internal.annotations.GuardedBy;
@@ -35,6 +36,8 @@ import com.android.server.SystemService;
 import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
 import com.android.supplemental.process.ISupplementalProcessService;
 import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
+
+import javax.annotation.concurrent.ThreadSafe;
 
 /**
  * Implementation of Supplemental Process Manager service.
@@ -46,6 +49,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     private static final String TAG = "SupplementalProcessManager";
 
     private final Context mContext;
+    private final CodeTokenManager mCodeTokenManager = new CodeTokenManager();
 
     private final SupplementalProcessServiceProvider mServiceProvider;
 
@@ -65,22 +69,26 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         final int callingUid = Binder.getCallingUid();
         final long token = Binder.clearCallingIdentity();
         try {
-            loadCodeWithClearIdentity(callingUid, name, version, params, callback);
+            loadCodeWithClearIdentity(callingUid, name, params, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    private void loadCodeWithClearIdentity(int callingUid, String name, String version,
-            Bundle params, IRemoteCodeCallback callback) {
-        // Step 1: create identity for the code
-        // TODO(b/204991850): what if app tries to load same code twice? Identity should be
-        // unique for each <uid, code> pair.
-        final IBinder codeToken = new Binder();
-        // Use the code token to establish a link between the app<-Manager->RemoteCode
+    private void loadCodeWithClearIdentity(int callingUid, String name, Bundle params,
+            IRemoteCodeCallback callback) {
+        // Step 1: create unique identity for the {callingUid, name} pair
+        final IBinder codeToken = mCodeTokenManager.createOrGetCodeToken(callingUid, name);
+
+        // Ensure we are not already loading code for this codeToken. That's determined by
+        // checking if we already have an AppAndRemoteCodeLink for the codeToken.
         final AppAndRemoteCodeLink link = new AppAndRemoteCodeLink(codeToken, callback);
         synchronized (mAppAndRemoteCodeLinks) {
-            mAppAndRemoteCodeLinks.put(codeToken, link);
+            if (mAppAndRemoteCodeLinks.putIfAbsent(codeToken, link) != null) {
+                link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_ALREADY_LOADED,
+                        name + " is being loaded or has been loaded already");
+                return;
+            }
         }
 
         // Step 2: fetch the installed code in device
@@ -126,7 +134,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     @Override
     public void requestSurfacePackage(IBinder codeToken, IBinder hostToken,
                 int displayId, Bundle params) {
-        //TODO(b/204991850): verify that codeToken belongs to the callingUser
+        //TODO(b/204991850): verify that codeToken belongs to the callingUid
         final long token = Binder.clearCallingIdentity();
         try {
             requestSurfacePackageWithClearIdentity(codeToken,
@@ -152,6 +160,52 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     @Override
     public void destroyCode(int id) {}
+
+    /**
+     * Clean up all internal data structures related to {@code codeToken}
+     */
+    private void cleanUp(IBinder codeToken) {
+        // TODO(b/209465368): We should call cleanUp when calling app is dead
+
+        // Destroy the codeToken first, to free up the {callingUid, name} pair
+        mCodeTokenManager.destroy(codeToken);
+        // Now clean up rest of the state which is using an obsolete codeToken
+        synchronized (mAppAndRemoteCodeLinks) {
+            mAppAndRemoteCodeLinks.remove(codeToken);
+        }
+    }
+
+    @ThreadSafe
+    private static class CodeTokenManager {
+        // Keep track of codeToken for each unique pair of {callingUid, name}
+        @GuardedBy("mCodeTokens")
+        final ArrayMap<Pair<Integer, String>, IBinder> mCodeTokens = new ArrayMap<>();
+        @GuardedBy("mCodeTokens")
+        final ArrayMap<IBinder, Pair<Integer, String>> mReverseCodeTokens = new ArrayMap<>();
+
+        /**
+         * For the given {callingUid, name} pair, create unique codeToken or
+         * return existing one.
+         */
+        public IBinder createOrGetCodeToken(int callingUid, String name) {
+            final Pair<Integer, String> pair = Pair.create(callingUid, name);
+            synchronized (mCodeTokens) {
+                if (!mCodeTokens.containsKey(pair)) {
+                    final IBinder codeToken = new Binder();
+                    mCodeTokens.put(pair, codeToken);
+                    mReverseCodeTokens.put(codeToken, pair);
+                }
+                return mCodeTokens.get(pair);
+            }
+        }
+
+        public void destroy(IBinder codeToken) {
+            synchronized (mCodeTokens) {
+                mCodeTokens.remove(mReverseCodeTokens.get(codeToken));
+                mReverseCodeTokens.remove(codeToken);
+            }
+        }
+    }
 
     /**
      * A callback object to establish a link between the app calling into manager service
@@ -199,7 +253,9 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         }
 
         @Override
-        public void onLoadCodeError(int errorCode, String errorMsg) {}
+        public void onLoadCodeError(int errorCode, String errorMsg) {
+            sendLoadCodeErrorToApp(errorCode, errorMsg);
+        }
 
         @Override
         public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
@@ -221,6 +277,10 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         }
 
         void sendLoadCodeErrorToApp(int errorCode, String errorMsg) {
+            // Since loadCode failed, manager should no longer concern itself with communication
+            // between the app and a non-existing remote code.
+            cleanUp(mCodeToken);
+
             try {
                 mManagerToAppCallback.onLoadCodeFailure(errorCode, errorMsg);
             } catch (RemoteException e) {
@@ -254,8 +314,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                 }
             } catch (RemoteException e) {
                 Log.w(TAG, "Failed to requestSurfacePackage", e);
-                sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
-                        "Failed to requestSurfacePackage" + e.getMessage());
+                // TODO(b/204991850): send request surface package error back to app
             }
         }
     }
