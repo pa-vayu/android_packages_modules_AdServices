@@ -43,7 +43,9 @@ class CodeHolder {
 
     private void sendLoadCodeSuccess() {
         try {
-            mCallback.onLoadCodeSuccess(new Bundle());
+            // TODO(b/204989872): return a
+            // ISupplementalProcessManagerToSupplementalProcessCallback from here
+            mCallback.onLoadCodeSuccess(new Bundle(), /*callback=*/null);
         } catch (RemoteException e) {
             Log.e(TAG, "Could not send onLoadCodeSuccess");
         }

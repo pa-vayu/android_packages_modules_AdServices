@@ -41,6 +41,11 @@ android_app {
     static_libs: [
         "androidx.annotation_annotation"
     ],
+    aidl: {
+        include_dirs: [
+            "frameworks/base/core/java", // For android.os.IBinders
+        ],
+    },
     sdk_version: "system_current",
     min_sdk_version: "current", // TODO: change once SDK is finalized
     updatable: true,

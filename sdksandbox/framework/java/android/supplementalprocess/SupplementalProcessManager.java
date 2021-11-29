@@ -30,14 +30,13 @@ public class SupplementalProcessManager {
     private final ISupplementalProcessManager mService;
     private final Context mContext;
 
-    /** {@hide} */
     public SupplementalProcessManager(Context context, ISupplementalProcessManager binder) {
         mContext = context;
         mService = binder;
     }
 
-    /** Error code to represent that there is no such code
-     * {@hide}
-     */
+    /** Error code to represent that there is no such code */
     public static final int LOAD_CODE_NOT_FOUND = 100;
+
+    public static final int LOAD_CODE_INTERNAL_ERROR = 500;
 }

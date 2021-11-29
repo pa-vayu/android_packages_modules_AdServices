@@ -18,16 +18,9 @@ package com.android.supplemental.process;
 
 import android.os.Bundle;
 import android.os.IBinder;
-import android.view.SurfaceControlViewHost;
-
-import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
 
 /** @hide */
-oneway interface ISupplementalProcessToSupplementalProcessManagerCallback {
-    const int LOAD_CODE_ALREADY_LOADED = 1;
-
-    void onLoadCodeSuccess(in Bundle params, in ISupplementalProcessManagerToSupplementalProcessCallback callback);
-    void onLoadCodeError(int errorCode, in String errorMessage);
-
-    void onSurfacePackageReady(in SurfaceControlViewHost.SurfacePackage surfacePackage, int surfacePackageId, in Bundle params);
+oneway interface ISupplementalProcessManagerToSupplementalProcessCallback {
+    void onSurfacePackageRequested(in IBinder hostToken, int displayId, in Bundle extraParams);
 }
+
