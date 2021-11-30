@@ -16,33 +16,15 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-android_test {
-    name: "SupplementalProcessManagerServiceUnitTests",
-    srcs: [
-        "src/**/*.java",
-        ":framework-supplementalprocess-sources",
-    ],
-    static_libs: [
-        "service-supplementalprocess",
-        "androidx.test.runner",
-        "truth-prebuilt",
-        "mockito-target-extended-minus-junit4",
-    ],
-    libs: [
-        "android.test.base",
-        "android.test.mock",
-        "android.test.runner",
-    ],
-    jni_libs: [
-        // Required for ExtendedMockito
-        "libdexmakerjvmtiagent",
-        "libstaticjvmtiagent",
-    ],
-    data: [
-      ":SampleCodeProviderApp",
-      ":SampleServiceApp"
-    ],
-    min_sdk_version: "current",
-    target_sdk_version: "current",
+android_test_helper_app {
+    name: "SampleServiceApp",
+    defaults: ["platform_app_defaults"],
+    srcs: ["src/**/*.java"],
+    manifest: "AndroidManifest.xml",
+    sdk_version: "current",
+    compile_dex: true,
+    dex_preopt: {
+        enabled: true,
+    },
     test_suites: ["general-tests"],
 }

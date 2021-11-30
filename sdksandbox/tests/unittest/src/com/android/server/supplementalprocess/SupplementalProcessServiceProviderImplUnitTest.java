@@ -47,7 +47,7 @@ public class SupplementalProcessServiceProviderImplUnitTest {
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getContext();
-        mServiceProvider = new SupplementalProcessServiceProviderImpl(context);
+        mServiceProvider = new SupplementalProcessServiceProviderImpl(context, new Injector());
     }
 
     @Test
@@ -73,5 +73,17 @@ public class SupplementalProcessServiceProviderImplUnitTest {
         assertThat(mServiceProvider.isServiceBound(curUid)).isTrue();
         deathRecipient.getValue().binderDied();
         assertThat(mServiceProvider.isServiceBound(curUid)).isFalse();
+    }
+
+    private static class Injector extends SupplementalProcessServiceProviderImpl.Injector {
+        @Override
+        public String getServicePackage() {
+            return "com.android.serviceprovider";
+        }
+
+        @Override
+        public String getServiceClass() {
+            return "com.android.serviceprovider.TestService";
+        }
     }
 }

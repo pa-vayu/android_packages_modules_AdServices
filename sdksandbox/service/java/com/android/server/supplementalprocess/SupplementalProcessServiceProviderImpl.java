@@ -29,6 +29,7 @@ import android.util.ArraySet;
 import android.util.Log;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.supplemental.process.ISupplementalProcessService;
 
 class SupplementalProcessServiceProviderImpl
@@ -36,24 +37,23 @@ class SupplementalProcessServiceProviderImpl
 
     private static final String TAG = "SupplementalProcessServiceProviderImpl";
 
-    // TODO(b/204991850): Pass value using dependency injection to override in tests
-    private static final String SUPPLEMENTAL_PROCESS_SERVICE_PACKAGE =
-            "com.android.supplemental.process";
-
-    // TODO(b/204991850): Pass value using dependency injection to override in tests
-    private static final String SERVICE_INTERFACE =
-            "com.android.supplemental.process.SupplementalProcessService";
-
     private final Object mLock = new Object();
 
     private final Context mContext;
+    private final Injector mInjector;
 
     @GuardedBy("mLock")
     private ArrayMap<UserHandle, SupplementalProcessConnection>
             mUserSupplementalProcessConnections = new ArrayMap<>();
 
     SupplementalProcessServiceProviderImpl(Context context) {
+        this(context, new Injector());
+    }
+
+    @VisibleForTesting
+    SupplementalProcessServiceProviderImpl(Context context, Injector injector) {
         mContext = context;
+        mInjector = injector;
     }
 
     @Override
@@ -95,8 +95,8 @@ class SupplementalProcessServiceProviderImpl
                 }
             };
 
-            final Intent intent = new Intent(SERVICE_INTERFACE);
-            intent.setPackage(SUPPLEMENTAL_PROCESS_SERVICE_PACKAGE);
+            final Intent intent = new Intent(mInjector.getServiceClass());
+            intent.setPackage(mInjector.getServicePackage());
 
             boolean bound = mContext.bindServiceAsUser(intent, userConnection.serviceConnection,
                     Context.BIND_AUTO_CREATE, callingUser);
@@ -205,6 +205,17 @@ class SupplementalProcessServiceProviderImpl
 
         public boolean isHostingAnyApp() {
             return !mHostingApps.isEmpty();
+        }
+    }
+
+    @VisibleForTesting
+    static class Injector {
+        public String getServicePackage() {
+            return "com.android.supplemental.process";
+        }
+
+        public String getServiceClass() {
+            return "com.android.supplemental.process.SupplementalProcessService";
         }
     }
 }
