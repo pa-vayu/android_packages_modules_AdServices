@@ -18,6 +18,9 @@ package android.supplementalprocess;
 
 import android.annotation.SystemService;
 import android.content.Context;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 
 /**
  * Supplemental Process Manager.
@@ -35,7 +38,53 @@ public class SupplementalProcessManager {
         mService = binder;
     }
 
-    /** Error code to represent that there is no such code */
+    /**
+     * Fetches and loads code into supplemental process.
+     */
+    public void loadCode(String name, String version, Bundle params, IRemoteCodeCallback callback) {
+        try {
+            mService.loadCode(name, version, params, callback);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Sends a request for a surface package to the remote code.
+     */
+    public void requestSurfacePackage(IBinder codeToken, IBinder hostToken, int displayId,
+            Bundle params) {
+        try {
+            mService.requestSurfacePackage(codeToken, hostToken, displayId, params);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Sends a bundle to supplemental process.
+     */
+    public void sendData(int id, Bundle params) {
+        try {
+            mService.sendData(id, params);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Destroys the code that is loaded into supplemental process.
+     */
+    public void destroyCode(int id) {
+        try {
+            mService.destroyCode(id);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /** Error code to represent that there is no such code
+     */
     public static final int LOAD_CODE_NOT_FOUND = 100;
 
     public static final int LOAD_CODE_INTERNAL_ERROR = 500;
