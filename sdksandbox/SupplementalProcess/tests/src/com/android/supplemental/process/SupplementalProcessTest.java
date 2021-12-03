@@ -23,12 +23,14 @@ import android.content.pm.ApplicationInfo;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Process;
 import android.view.SurfaceControlViewHost;
 
 import androidx.test.InstrumentationRegistry;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -44,6 +46,11 @@ public class SupplementalProcessTest {
     private ApplicationInfo mApplicationInfo;
     private static final String CODE_PROVIDER_CLASS = "com.android.testprovider.TestProvider";
 
+    @BeforeClass
+    public static void setupClass() {
+        // Required to create a SurfaceControlViewHost
+        Looper.prepare();
+    }
     @Before
     public void setup() throws Exception {
         mService = new FakeSupplementalProcessService();
@@ -92,12 +99,30 @@ public class SupplementalProcessTest {
         assertThat(mRemoteCode2.mSuccessful).isTrue();
     }
 
+    @Test
+    public void testRequestSurfacePackage() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        RemoteCode mRemoteCode = new RemoteCode(latch);
+        mService.loadCode(new Binder(), mApplicationInfo, CODE_PROVIDER_CLASS,
+                new Bundle(), mRemoteCode);
+        assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
+        CountDownLatch surfaceLatch = new CountDownLatch(1);
+        mRemoteCode.setLatch(surfaceLatch);
+        mRemoteCode.getCallback().onSurfacePackageRequested(new Binder(),
+                mContext.getDisplayId(), null);
+        assertThat(surfaceLatch.await(1, TimeUnit.MINUTES)).isTrue();
+        assertThat(mRemoteCode.mSurfacePackage).isNotNull();
+    }
+
     private static class RemoteCode
             extends ISupplementalProcessToSupplementalProcessManagerCallback.Stub {
 
-        private final CountDownLatch mLatch;
+        private CountDownLatch mLatch;
+        private SurfaceControlViewHost.SurfacePackage mSurfacePackage;
         boolean mSuccessful = false;
         int mErrorCode = -1;
+
+        private ISupplementalProcessManagerToSupplementalProcessCallback mCallback;
 
         RemoteCode(CountDownLatch latch) {
             mLatch = latch;
@@ -107,6 +132,7 @@ public class SupplementalProcessTest {
         public void onLoadCodeSuccess(Bundle params,
                 ISupplementalProcessManagerToSupplementalProcessCallback callback)  {
             mLatch.countDown();
+            mCallback = callback;
             mSuccessful = true;
         }
 
@@ -120,7 +146,18 @@ public class SupplementalProcessTest {
         @Override
         public void onSurfacePackageReady(
                 SurfaceControlViewHost.SurfacePackage surfacePackage,
-                int displayId, Bundle params) {}
+                int displayId, Bundle params) {
+            mLatch.countDown();
+            mSurfacePackage = surfacePackage;
+        }
+
+        private void setLatch(CountDownLatch latch) {
+            mLatch = latch;
+        }
+
+        private ISupplementalProcessManagerToSupplementalProcessCallback getCallback() {
+            return mCallback;
+        }
     }
 
     private static class FakeSupplementalProcessService extends SupplementalProcessServiceImpl {

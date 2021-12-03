@@ -20,8 +20,7 @@ import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.content.Context;
 import android.os.Bundle;
-import android.os.IBinder;
-import android.view.SurfaceControlViewHost.SurfacePackage;
+import android.view.View;
 
 import java.util.concurrent.Executor;
 
@@ -48,8 +47,7 @@ public abstract class CodeProvider {
      * Returns view that will be used for remote rendering.
      */
     @NonNull
-    public abstract SurfacePackage getSurfacePackage(
-            @NonNull IBinder hostToken, int displayId, @NonNull Bundle params);
+    public abstract View getView(Context windowContext, @NonNull Bundle params);
 
     /**
      * Called when extra data sent from the app is received by code.

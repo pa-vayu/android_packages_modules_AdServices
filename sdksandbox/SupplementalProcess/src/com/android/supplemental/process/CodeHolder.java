@@ -17,10 +17,19 @@
 package com.android.supplemental.process;
 
 import android.content.Context;
+import android.hardware.display.DisplayManager;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.supplementalprocess.CodeProvider;
 import android.util.Log;
+import android.util.SparseArray;
+import android.view.SurfaceControlViewHost;
+import android.view.View;
+import android.view.WindowManager;
+
+import java.security.SecureRandom;
+import java.util.Random;
 
 /**
  * A holder for loaded code.
@@ -34,6 +43,11 @@ class CodeHolder {
     private CodeProvider mCode;
     private Context mContext;
 
+    private DisplayManager mDisplayManager;
+    private final Random mRandom = new SecureRandom();
+    private final SparseArray<SurfaceControlViewHost.SurfacePackage> mSurfacePackages =
+            new SparseArray<>();
+
     void init(Context context, Bundle params,
             ISupplementalProcessToSupplementalProcessManagerCallback callback,
             String codeProviderClassName, ClassLoader loader) {
@@ -43,6 +57,7 @@ class CodeHolder {
         mInitialized = true;
         mCallback = callback;
         mContext = context;
+        mDisplayManager = mContext.getSystemService(DisplayManager.class);
         try {
             Class<?> clz = Class.forName(codeProviderClassName, true, loader);
             mCode = (CodeProvider) clz.getConstructor(Context.class).newInstance(mContext);
@@ -68,9 +83,7 @@ class CodeHolder {
 
     private void sendLoadCodeSuccess() {
         try {
-            // TODO(b/204989872): return a
-            // ISupplementalProcessManagerToSupplementalProcessCallback from here
-            mCallback.onLoadCodeSuccess(new Bundle(), /*callback=*/null);
+            mCallback.onLoadCodeSuccess(new Bundle(), new SupplementalProcessCallbackImpl());
         } catch (RemoteException e) {
             Log.e(TAG, "Could not send onLoadCodeSuccess: " + e);
         }
@@ -84,6 +97,46 @@ class CodeHolder {
                     errorMessage);
         } catch (RemoteException e) {
             Log.e(TAG, "Could not send onLoadCodeError: " + e);
+        }
+    }
+
+    private int allocateSurfacePackageId(SurfaceControlViewHost.SurfacePackage surfacePackage) {
+        synchronized (mSurfacePackages) {
+            for (int i = 0; i < 32; i++) {
+                int id = mRandom.nextInt();
+                if (!mSurfacePackages.contains(id)) {
+                    mSurfacePackages.put(id, surfacePackage);
+                    return id;
+                }
+            }
+            throw new IllegalStateException("Could not allocate surfacePackageId");
+        }
+    }
+
+    private class SupplementalProcessCallbackImpl
+            extends ISupplementalProcessManagerToSupplementalProcessCallback.Stub {
+
+        @Override
+        public void onSurfacePackageRequested(IBinder token, int displayId, Bundle params) {
+            try {
+                Context displayContext = mContext.createDisplayContext(
+                        mDisplayManager.getDisplay(displayId));
+                // TODO(b/209009304): Support other window contexts?
+                Context windowContext = displayContext.createWindowContext(
+                        WindowManager.LayoutParams.TYPE_APPLICATION_PANEL, null);
+                final View view = mCode.getView(windowContext, params);
+                SurfaceControlViewHost host = new SurfaceControlViewHost(windowContext,
+                        mDisplayManager.getDisplay(displayId), token);
+                host.setView(view, view.getWidth(), view.getHeight());
+                SurfaceControlViewHost.SurfacePackage surfacePackage  = host.getSurfacePackage();
+                int surfacePackageId = allocateSurfacePackageId(surfacePackage);
+                mCallback.onSurfacePackageReady(surfacePackage, surfacePackageId, params);
+            } catch (RemoteException e) {
+                Log.e(TAG, "Could not send onSurfacePackageReady", e);
+            } catch (Throwable e) {
+                // TODO(b/209396156): pass error back to calling package.
+                Log.e(TAG, "Error thrown while getting surface package", e);
+            }
         }
     }
 }
