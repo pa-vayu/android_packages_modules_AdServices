@@ -98,7 +98,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         try {
             synchronized (mServiceProvider) {
                 // TODO(b/204991850): we should merge bindService() and getService() together
-                mServiceProvider.bindService(callingUid, codeToken);
+                mServiceProvider.bindService(callingUid, callback.asBinder());
                 ISupplementalProcessService service = mServiceProvider.getService(callingUid);
                 if (service == null) {
                     link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
