@@ -18,9 +18,8 @@ package com.android.testprovider;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.supplementalprocess.CodeProvider;
-import android.view.SurfaceControlViewHost;
+import android.view.View;
 
 import java.util.concurrent.Executor;
 
@@ -36,9 +35,8 @@ public class TestProvider extends CodeProvider {
     }
 
     @Override
-    public SurfaceControlViewHost.SurfacePackage getSurfacePackage(IBinder hostToken, int displayId,
-            Bundle params) {
-        return null;
+    public View getView(Context windowContext, Bundle params) {
+        return new View(windowContext);
     }
 
     @Override
