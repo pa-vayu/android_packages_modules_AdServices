@@ -47,7 +47,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private final Context mContext;
 
-    @GuardedBy("mServiceProvider")
     private final SupplementalProcessServiceProvider mServiceProvider;
 
     // For communication between app<-ManagerService->RemoteCode for each codeToken
@@ -96,18 +95,16 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
         // Step 3: invoke CodeLoaderService to load the code
         try {
-            synchronized (mServiceProvider) {
-                // TODO(b/204991850): we should merge bindService() and getService() together
-                mServiceProvider.bindService(callingUid, callback.asBinder());
-                ISupplementalProcessService service = mServiceProvider.getService(callingUid);
-                if (service == null) {
-                    link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
-                            "Failed to bind to SupplementalProcess service");
-                    return;
-                }
-                // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
-                service.loadCode(codeToken, info, "", params, link);
+            ISupplementalProcessService service =
+                    mServiceProvider.bindService(callingUid, callback.asBinder());
+            if (service == null) {
+                link.sendLoadCodeErrorToApp(
+                        SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
+                        "Failed to bind to SupplementalProcess service");
+                return;
             }
+            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
+            service.loadCode(codeToken, info, "", params, link);
         } catch (RemoteException e) {
             String errorMsg = "Failed to contact SupplementalProcessService";
             Log.w(TAG, errorMsg, e);

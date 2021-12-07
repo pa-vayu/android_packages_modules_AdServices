@@ -25,16 +25,12 @@ import com.android.supplemental.process.ISupplementalProcessService;
  */
 public interface SupplementalProcessServiceProvider {
     /**
-     * Initiate a connection with SupplementalProcessService
-     * and register the app using the service through
-     * {@code appBinder}
+     * Initiate a connection with SupplementalProcessService and register the app using the service
+     * through {@code appBinder}
+     *
+     * <p>Return SupplementalProcessService connected for {@code callingUid} or null on error.
      */
-    void bindService(int callingUid, IBinder appBinder);
-    /**
-     * Return SupplementalProcessService connected for
-     * {@code callingUser}
-     */
-    ISupplementalProcessService getService(int callingUid);
+    ISupplementalProcessService bindService(int callingUid, IBinder appBinder);
     /**
      * Check if service is connected
      */

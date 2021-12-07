@@ -201,25 +201,20 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public void bindService(int callingUid, IBinder appBinder) {
+        public ISupplementalProcessService bindService(int callingUid, IBinder appBinder) {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             if (mService.containsKey(callingUser)) {
-                return;
+                return mService.get(callingUser);
             }
 
             mService.put(callingUser, mSupplementalProcessService);
+            return mService.get(callingUser);
         }
 
         @Override
         public boolean isServiceBound(int callingUid) {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             return mService.containsKey(callingUser);
-        }
-
-        @Override
-        public ISupplementalProcessService getService(int callingUid) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            return mService.get(callingUser);
         }
     }
 
