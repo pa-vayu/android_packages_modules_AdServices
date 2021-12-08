@@ -16,6 +16,7 @@
 
 package com.android.server.supplementalprocess;
 
+import android.annotation.Nullable;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -32,8 +33,10 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.supplemental.process.ISupplementalProcessService;
 
-class SupplementalProcessServiceProviderImpl
-        implements SupplementalProcessServiceProvider {
+import javax.annotation.concurrent.ThreadSafe;
+
+@ThreadSafe
+class SupplementalProcessServiceProviderImpl implements SupplementalProcessServiceProvider {
 
     private static final String TAG = "SupplementalProcessServiceProviderImpl";
 
@@ -57,14 +60,15 @@ class SupplementalProcessServiceProviderImpl
     }
 
     @Override
-    public void bindService(int callingUid, IBinder appBinder) {
+    @Nullable
+    public ISupplementalProcessService bindService(int callingUid, IBinder appBinder) {
         final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
         synchronized (mLock) {
             Log.i(TAG, "Binding to supplemental process for " + callingUser.toString());
             if (isServiceBound(callingUid)) {
                 Log.i(TAG, "Supplemental process is already bound");
                 registerApp(callingUid, appBinder);
-                return;
+                return getSupplementalProcessConnection(callingUid).supplementalProcessService;
             }
 
             SupplementalProcessConnection userConnection = new SupplementalProcessConnection();
@@ -103,14 +107,14 @@ class SupplementalProcessServiceProviderImpl
 
             if (!bound) {
                 Log.e(TAG, "Could not find supplemental process service.");
-                //TODO(b/204991850): throw exception?
-                return;
+                return null;
             }
 
             mUserSupplementalProcessConnections.put(callingUser, userConnection);
             Log.i(TAG, "Supplemental process has been bound");
 
             registerApp(callingUid, appBinder);
+            return getSupplementalProcessConnection(callingUid).supplementalProcessService;
         }
     }
 
@@ -142,13 +146,6 @@ class SupplementalProcessServiceProviderImpl
             if (!supplementalProcess.isHostingAnyApp()) {
                 unbindService(uid);
             }
-        }
-    }
-
-    @Override
-    public ISupplementalProcessService getService(int callingUid) {
-        synchronized (mLock) {
-            return getSupplementalProcessConnection(callingUid).supplementalProcessService;
         }
     }
 
