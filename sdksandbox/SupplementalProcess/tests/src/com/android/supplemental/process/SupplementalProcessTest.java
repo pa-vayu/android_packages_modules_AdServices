@@ -122,7 +122,7 @@ public class SupplementalProcessTest {
         CountDownLatch surfaceLatch = new CountDownLatch(1);
         mRemoteCode.setLatch(surfaceLatch);
         mRemoteCode.getCallback().onSurfacePackageRequested(new Binder(),
-                mInjector.getContext().getDisplayId(), null);
+                mInjector.getContext().getDisplayId(), new Bundle());
         assertThat(surfaceLatch.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode.mSurfacePackage).isNotNull();
     }
