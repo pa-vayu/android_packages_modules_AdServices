@@ -23,6 +23,7 @@ import android.view.SurfaceControlViewHost;
 /** @hide */
 oneway interface IRemoteCodeCallback {
     void onLoadCodeSuccess(IBinder codeToken, in Bundle params);
-    void onLoadCodeFailure(int errorCode, String errorMsg );
+    void onLoadCodeFailure(int errorCode, String errorMsg);
     void onSurfacePackageReady(in SurfaceControlViewHost.SurfacePackage surfacePackage, int surfacePackageId, in Bundle params);
+    void onSurfacePackageError(int errorCode, String errorMsg);
 }

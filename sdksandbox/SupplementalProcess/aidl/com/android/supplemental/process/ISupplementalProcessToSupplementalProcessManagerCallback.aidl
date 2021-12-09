@@ -29,8 +29,11 @@ oneway interface ISupplementalProcessToSupplementalProcessManagerCallback {
     const int LOAD_CODE_NOT_FOUND = 3;
     const int LOAD_CODE_INSTANTIATION_ERROR = 3;
 
+    const int SURFACE_PACKAGE_INTERNAL_ERROR = 700;
+
     void onLoadCodeSuccess(in Bundle params, in ISupplementalProcessManagerToSupplementalProcessCallback callback);
     void onLoadCodeError(int errorCode, in String errorMessage);
 
     void onSurfacePackageReady(in SurfaceControlViewHost.SurfacePackage surfacePackage, int surfacePackageId, in Bundle params);
+    void onSurfacePackageError(int errorCode, in String errorMessage);
 }
