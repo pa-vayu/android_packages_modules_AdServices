@@ -42,9 +42,25 @@ import java.util.Map;
 public class SupplementalProcessServiceImpl extends Service {
 
     private static final String TAG = "SupplementalProcess";
+    private Injector mInjector;
 
     @GuardedBy("mHeldCode")
     private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
+
+    static class Injector {
+        int getCallingUid() {
+            return Binder.getCallingUidOrThrow();
+        }
+
+        Context getContext() {
+            return getContext().getApplicationContext();
+        }
+    }
+
+    @VisibleForTesting
+    SupplementalProcessServiceImpl(Injector injector) {
+        mInjector = injector;
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -54,27 +70,16 @@ public class SupplementalProcessServiceImpl extends Service {
     @Override
     public void onCreate() {
         mBinder = new SupplementalProcessServiceDelegate();
-    }
-
-    // Used for unit testing.
-    @VisibleForTesting
-    int getCallingUid() {
-        return Binder.getCallingUidOrThrow();
-    }
-
-    // Used for unit testing, where this service will not be bound.
-    @VisibleForTesting
-    Context getContext() {
-        return getApplicationContext();
+        mInjector = new Injector();
     }
 
     private ISupplementalProcessService.Stub mBinder;
 
     private void enforceCallerIsSystemServer() {
-        if (getCallingUid() != Process.SYSTEM_UID) {
+        if (mInjector.getCallingUid() != Process.SYSTEM_UID) {
             throw new SecurityException(
                     "Only system_server is allowed to call this API, actual calling uid is "
-                            + getCallingUid());
+                            + mInjector.getCallingUid());
         }
         Binder.clearCallingIdentity();
     }
@@ -111,7 +116,7 @@ public class SupplementalProcessServiceImpl extends Service {
             Class<?> clz = Class.forName(CodeHolder.class.getName(), true, loader);
             CodeHolder codeHolder = (CodeHolder) clz.getDeclaredConstructor().newInstance();
             codeHolder.init(
-                    getContext(),
+                    mInjector.getContext(),
                     params,
                     callback,
                     codeProviderClassName,

@@ -41,10 +41,22 @@ import java.util.concurrent.TimeUnit;
 @RunWith(JUnit4.class)
 public class SupplementalProcessTest {
 
-    private Context mContext = InstrumentationRegistry.getContext();
     private SupplementalProcessServiceImpl mService;
     private ApplicationInfo mApplicationInfo;
     private static final String CODE_PROVIDER_CLASS = "com.android.testprovider.TestProvider";
+    private InjectorForTest mInjector;
+
+    static class InjectorForTest extends SupplementalProcessServiceImpl.Injector {
+        @Override
+        int getCallingUid() {
+            return Process.SYSTEM_UID;
+        }
+
+        @Override
+        Context getContext() {
+            return InstrumentationRegistry.getContext();
+        }
+    }
 
     @BeforeClass
     public static void setupClass() {
@@ -53,8 +65,9 @@ public class SupplementalProcessTest {
     }
     @Before
     public void setup() throws Exception {
-        mService = new FakeSupplementalProcessService();
-        mApplicationInfo = mContext.getPackageManager().getApplicationInfo(
+        mInjector = new InjectorForTest();
+        mService = new SupplementalProcessServiceImpl(mInjector);
+        mApplicationInfo = mInjector.getContext().getPackageManager().getApplicationInfo(
                 "com.android.testprovider", 0);
     }
 
@@ -109,7 +122,7 @@ public class SupplementalProcessTest {
         CountDownLatch surfaceLatch = new CountDownLatch(1);
         mRemoteCode.setLatch(surfaceLatch);
         mRemoteCode.getCallback().onSurfacePackageRequested(new Binder(),
-                mContext.getDisplayId(), null);
+                mInjector.getContext().getDisplayId(), null);
         assertThat(surfaceLatch.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode.mSurfacePackage).isNotNull();
     }
@@ -157,18 +170,6 @@ public class SupplementalProcessTest {
 
         private ISupplementalProcessManagerToSupplementalProcessCallback getCallback() {
             return mCallback;
-        }
-    }
-
-    private static class FakeSupplementalProcessService extends SupplementalProcessServiceImpl {
-        @Override
-        int getCallingUid() {
-            return Process.SYSTEM_UID;
-        }
-
-        @Override
-        Context getContext() {
-            return InstrumentationRegistry.getContext();
         }
     }
 }
