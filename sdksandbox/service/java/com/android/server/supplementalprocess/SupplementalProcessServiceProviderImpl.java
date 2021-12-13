@@ -102,8 +102,12 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
             final Intent intent = new Intent(mInjector.getServiceClass());
             intent.setPackage(mInjector.getServicePackage());
 
-            boolean bound = mContext.bindServiceAsUser(intent, userConnection.serviceConnection,
-                    Context.BIND_AUTO_CREATE, callingUser);
+            boolean bound =
+                    mContext.bindServiceAsUser(
+                            intent,
+                            userConnection.serviceConnection,
+                            Context.BIND_AUTO_CREATE,
+                            callingUser);
 
             if (!bound) {
                 Log.e(TAG, "Could not find supplemental process service.");

@@ -31,8 +31,6 @@ public interface SupplementalProcessServiceProvider {
      * <p>Return SupplementalProcessService connected for {@code callingUid} or null on error.
      */
     ISupplementalProcessService bindService(int callingUid, IBinder appBinder);
-    /**
-     * Check if service is connected
-     */
+    /** Check if service is connected */
     boolean isServiceBound(int callingUid);
 }

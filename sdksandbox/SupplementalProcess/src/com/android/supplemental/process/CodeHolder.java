@@ -89,6 +89,17 @@ class CodeHolder {
         }
     }
 
+    private void sendSurfacePackageError(String errorMessage) {
+        try {
+            mCallback.onSurfacePackageError(
+                    ISupplementalProcessToSupplementalProcessManagerCallback
+                            .SURFACE_PACKAGE_INTERNAL_ERROR,
+                    errorMessage);
+        } catch (RemoteException e) {
+            Log.e(TAG, "Could not send onSurfacePackageError: " + e);
+        }
+    }
+
     private void sendLoadCodeError(String errorMessage) {
         try {
             mCallback.onLoadCodeError(
@@ -134,8 +145,7 @@ class CodeHolder {
             } catch (RemoteException e) {
                 Log.e(TAG, "Could not send onSurfacePackageReady", e);
             } catch (Throwable e) {
-                // TODO(b/209396156): pass error back to calling package.
-                Log.e(TAG, "Error thrown while getting surface package", e);
+                sendSurfacePackageError("Error thrown while getting surface package: " + e);
             }
         }
     }

@@ -127,6 +127,27 @@ public class SupplementalProcessTest {
         assertThat(mRemoteCode.mSurfacePackage).isNotNull();
     }
 
+    @Test
+    public void testSurfacePackageError() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        RemoteCode mRemoteCode = new RemoteCode(latch);
+        mService.loadCode(
+                new Binder(), mApplicationInfo, CODE_PROVIDER_CLASS, new Bundle(), mRemoteCode);
+        assertThat(latch.await(1, TimeUnit.MINUTES)).isTrue();
+        CountDownLatch surfaceLatch = new CountDownLatch(1);
+        mRemoteCode.setLatch(surfaceLatch);
+        mRemoteCode
+                .getCallback()
+                .onSurfacePackageRequested(new Binder(), 111111 /* invalid displayId */, null);
+        assertThat(surfaceLatch.await(1, TimeUnit.MINUTES)).isTrue();
+        assertThat(mRemoteCode.mSurfacePackage).isNull();
+        assertThat(mRemoteCode.mSuccessful).isFalse();
+        assertThat(mRemoteCode.mErrorCode)
+                .isEqualTo(
+                        ISupplementalProcessToSupplementalProcessManagerCallback
+                                .SURFACE_PACKAGE_INTERNAL_ERROR);
+    }
+
     private static class RemoteCode
             extends ISupplementalProcessToSupplementalProcessManagerCallback.Stub {
 
@@ -162,6 +183,13 @@ public class SupplementalProcessTest {
                 int displayId, Bundle params) {
             mLatch.countDown();
             mSurfacePackage = surfacePackage;
+        }
+
+        @Override
+        public void onSurfacePackageError(int errorCode, String message) {
+            mLatch.countDown();
+            mErrorCode = errorCode;
+            mSuccessful = false;
         }
 
         private void setLatch(CountDownLatch latch) {

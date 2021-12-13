@@ -207,6 +207,11 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             sendSurfacePackageReadyToApp(surfacePackage, surfacePackageId, params);
         }
 
+        @Override
+        public void onSurfacePackageError(int errorCode, String errorMsg) {
+            sendSurfacePackageErrorToApp(errorCode, errorMsg);
+        }
+
         private void sendLoadCodeSuccessToApp(Bundle params) {
             try {
                 mManagerToAppCallback.onLoadCodeSuccess(mCodeToken, params);
@@ -220,6 +225,14 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                 mManagerToAppCallback.onLoadCodeFailure(errorCode, errorMsg);
             } catch (RemoteException e) {
                 Log.w(TAG, "Failed to send onLoadCodeFailure", e);
+            }
+        }
+
+        void sendSurfacePackageErrorToApp(int errorCode, String errorMsg) {
+            try {
+                mManagerToAppCallback.onSurfacePackageError(errorCode, errorMsg);
+            } catch (RemoteException e) {
+                Log.w(TAG, "Failed to send onSurfacePackageError", e);
             }
         }
 

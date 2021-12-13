@@ -79,9 +79,9 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         // Verify loading failed
         assertThat(callback.isLoadCodeSuccessful()).isFalse();
-        assertThat(callback.getErrorCode()).isEqualTo(
-                SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
-        assertThat(callback.getErrorMsg()).contains("not found for loading");
+        assertThat(callback.getLoadCodeErrorCode())
+                .isEqualTo(SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
+        assertThat(callback.getLoadCodeErrorMsg()).contains("not found for loading");
     }
 
     @Test
@@ -113,6 +113,19 @@ public class SupplementalProcessManagerServiceUnitTest {
         assertThat(callback.isRequestSurfacePackageSuccessful()).isTrue();
     }
 
+    @Test
+    public void testSurfacePackageError() throws Exception {
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        // Assume SurfacePackage encounters an error.
+        mSupplementalProcessService.sendSurfacePackageError(
+                SupplementalProcessManager.SURFACE_PACKAGE_INTERNAL_ERROR, "bad surface");
+        assertThat(callback.getSurfacePackageErrorMsg()).contains("bad surface");
+        assertThat(callback.getSurfacePackageErrorCode())
+                .isEqualTo(SupplementalProcessManager.SURFACE_PACKAGE_INTERNAL_ERROR);
+    }
+
+    // ManagerToAppCallback
     private static class FakeInitCodeCallback extends IRemoteCodeCallback.Stub {
         private final CountDownLatch mLoadCodeLatch = new CountDownLatch(1);
         private final CountDownLatch mSurfacePackageLatch = new CountDownLatch(1);
@@ -141,6 +154,14 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
+        public void onSurfacePackageError(int errorCode, String errorMsg) {
+            mSurfacePackageSuccess = false;
+            mErrorCode = errorCode;
+            mErrorMsg = errorMsg;
+            mSurfacePackageLatch.countDown();
+        }
+
+        @Override
         public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
                     int surfacePackageId, Bundle params) {
             mSurfacePackageSuccess = true;
@@ -164,15 +185,27 @@ public class SupplementalProcessManagerServiceUnitTest {
             return mLoadCodeSuccess;
         }
 
-        int getErrorCode() {
+        int getLoadCodeErrorCode() {
             waitForLatch(mLoadCodeLatch);
             assertThat(mLoadCodeSuccess).isFalse();
             return mErrorCode;
         }
 
-        String getErrorMsg() {
+        String getLoadCodeErrorMsg() {
             waitForLatch(mLoadCodeLatch);
             assertThat(mLoadCodeSuccess).isFalse();
+            return mErrorMsg;
+        }
+
+        int getSurfacePackageErrorCode() {
+            waitForLatch(mSurfacePackageLatch);
+            assertThat(mSurfacePackageSuccess).isFalse();
+            return mErrorCode;
+        }
+
+        String getSurfacePackageErrorMsg() {
+            waitForLatch(mSurfacePackageLatch);
+            assertThat(mSurfacePackageSuccess).isFalse();
             return mErrorMsg;
         }
 
@@ -239,6 +272,10 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         void sendLoadCodeSuccessful() throws RemoteException {
             mCodeToManagerCallback.onLoadCodeSuccess(new Bundle(), mManagerToCodeCallback);
+        }
+
+        void sendSurfacePackageError(int errorCode, String errorMsg) throws RemoteException {
+            mCodeToManagerCallback.onSurfacePackageError(errorCode, errorMsg);
         }
 
         void sendSurfacePackageReady() throws RemoteException {

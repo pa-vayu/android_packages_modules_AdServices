@@ -88,4 +88,6 @@ public class SupplementalProcessManager {
     public static final int LOAD_CODE_NOT_FOUND = 100;
 
     public static final int LOAD_CODE_INTERNAL_ERROR = 500;
+
+    public static final int SURFACE_PACKAGE_INTERNAL_ERROR = 700;
 }
