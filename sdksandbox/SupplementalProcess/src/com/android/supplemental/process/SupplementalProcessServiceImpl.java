@@ -37,6 +37,8 @@ import com.android.internal.annotations.VisibleForTesting;
 
 import dalvik.system.DexClassLoader;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
@@ -90,6 +92,25 @@ public class SupplementalProcessServiceImpl extends Service {
     public void onCreate() {
         mBinder = new SupplementalProcessServiceDelegate();
         mInjector = new Injector(getApplicationContext());
+    }
+
+    @Override
+    protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+        mInjector.getContext().enforceCallingPermission(android.Manifest.permission.DUMP,
+                "Can't dump " + TAG);
+        synchronized (mHeldCode) {
+            // TODO(b/211575098): Use IndentingPrintWriter for better formatting
+            if (mHeldCode.isEmpty()) {
+                writer.println("mHeldCode is empty");
+            } else {
+                writer.print("mHeldCode size: ");
+                writer.println(mHeldCode.size());
+                for (CodeHolder codeHolder : mHeldCode.values()) {
+                    codeHolder.dump(writer);
+                    writer.println();
+                }
+            }
+        }
     }
 
     private ISupplementalProcessService.Stub mBinder;

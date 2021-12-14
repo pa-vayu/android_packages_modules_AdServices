@@ -35,6 +35,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -147,6 +150,11 @@ public class SupplementalProcessTest {
                 .isEqualTo(
                         ISupplementalProcessToSupplementalProcessManagerCallback
                                 .SURFACE_PACKAGE_INTERNAL_ERROR);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testDumpWithoutPermission() {
+        mService.dump(new FileDescriptor(), new PrintWriter(new StringWriter()), new String[0]);
     }
 
     private static class RemoteCode
