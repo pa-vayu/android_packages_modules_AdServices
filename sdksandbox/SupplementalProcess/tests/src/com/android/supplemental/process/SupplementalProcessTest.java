@@ -44,17 +44,17 @@ public class SupplementalProcessTest {
     private SupplementalProcessServiceImpl mService;
     private ApplicationInfo mApplicationInfo;
     private static final String CODE_PROVIDER_CLASS = "com.android.testprovider.TestProvider";
-    private InjectorForTest mInjector;
+    private Context mContext;
 
     static class InjectorForTest extends SupplementalProcessServiceImpl.Injector {
-        @Override
-        int getCallingUid() {
-            return Process.SYSTEM_UID;
+
+        InjectorForTest(Context context) {
+            super(context);
         }
 
         @Override
-        Context getContext() {
-            return InstrumentationRegistry.getContext();
+        int getCallingUid() {
+            return Process.SYSTEM_UID;
         }
     }
 
@@ -65,9 +65,10 @@ public class SupplementalProcessTest {
     }
     @Before
     public void setup() throws Exception {
-        mInjector = new InjectorForTest();
-        mService = new SupplementalProcessServiceImpl(mInjector);
-        mApplicationInfo = mInjector.getContext().getPackageManager().getApplicationInfo(
+        mContext = InstrumentationRegistry.getContext();
+        InjectorForTest injector = new InjectorForTest(mContext);
+        mService = new SupplementalProcessServiceImpl(injector);
+        mApplicationInfo = mContext.getPackageManager().getApplicationInfo(
                 "com.android.testprovider", 0);
     }
 
@@ -122,7 +123,7 @@ public class SupplementalProcessTest {
         CountDownLatch surfaceLatch = new CountDownLatch(1);
         mRemoteCode.setLatch(surfaceLatch);
         mRemoteCode.getCallback().onSurfacePackageRequested(new Binder(),
-                mInjector.getContext().getDisplayId(), new Bundle());
+                mContext.getDisplayId(), new Bundle());
         assertThat(surfaceLatch.await(1, TimeUnit.MINUTES)).isTrue();
         assertThat(mRemoteCode.mSurfacePackage).isNotNull();
     }

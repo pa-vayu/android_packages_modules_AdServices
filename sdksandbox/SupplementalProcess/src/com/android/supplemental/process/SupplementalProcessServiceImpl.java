@@ -57,13 +57,23 @@ public class SupplementalProcessServiceImpl extends Service {
     private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
 
     static class Injector {
+
+        private final Context mContext;
+
+        Injector(Context context) {
+            mContext = context;
+        }
+
         int getCallingUid() {
             return Binder.getCallingUidOrThrow();
         }
 
         Context getContext() {
-            return getContext().getApplicationContext();
+            return mContext;
         }
+    }
+
+    public SupplementalProcessServiceImpl() {
     }
 
     @VisibleForTesting
@@ -79,7 +89,7 @@ public class SupplementalProcessServiceImpl extends Service {
     @Override
     public void onCreate() {
         mBinder = new SupplementalProcessServiceDelegate();
-        mInjector = new Injector();
+        mInjector = new Injector(getApplicationContext());
     }
 
     private ISupplementalProcessService.Stub mBinder;
