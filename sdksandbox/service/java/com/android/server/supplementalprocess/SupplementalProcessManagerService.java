@@ -105,6 +105,12 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         try {
             ISupplementalProcessService service =
                     mServiceProvider.bindService(callingUid, callback.asBinder());
+            try {
+                // TODO(b/209621566): Remove the need for this crude workaround.
+                Thread.sleep(1000);
+            } catch (Exception e) {
+                Log.e(TAG, "Could not sleep" , e);
+            }
             if (service == null) {
                 link.sendLoadCodeErrorToApp(
                         SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,

@@ -40,7 +40,8 @@ android_app {
         "framework-supplementalprocess",
     ],
     static_libs: [
-        "androidx.annotation_annotation"
+        "androidx.annotation_annotation",
+        "androidx.core_core",
     ],
     aidl: {
         include_dirs: [

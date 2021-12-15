@@ -29,6 +29,8 @@ import android.util.ArrayMap;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.util.Preconditions;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -43,6 +45,13 @@ public class SupplementalProcessServiceImpl extends Service {
 
     private static final String TAG = "SupplementalProcess";
     private Injector mInjector;
+
+    // The options below may be passed in a {@code Bundle} while loading or rendering.
+    // TODO(b/210670819): Encapsulate in a parcelable.
+    public static final String CODE_PROVIDER_KEY = "code-provider-class";
+    public static final String WIDTH_KEY = "width";
+    public static final String HEIGHT_KEY = "height";
+
 
     @GuardedBy("mHeldCode")
     private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
@@ -97,10 +106,15 @@ public class SupplementalProcessServiceImpl extends Service {
         return new DexClassLoader(appInfo.sourceDir, null, null, getClass().getClassLoader());
     }
 
-    private void loadCodeInternal(IBinder codeToken, @NonNull ApplicationInfo applicationInfo,
-            @NonNull String codeProviderClassName,
+    private void loadCodeInternal(@NonNull IBinder codeToken,
+            @NonNull ApplicationInfo applicationInfo,
+            @Nullable String codeProviderClassName,
             @NonNull Bundle params,
             @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+        if (params.containsKey(CODE_PROVIDER_KEY)) {
+            codeProviderClassName = params.getString(CODE_PROVIDER_KEY);
+        }
+        Preconditions.checkStringNotEmpty(codeProviderClassName);
         synchronized (mHeldCode) {
             if (mHeldCode.containsKey(codeToken)) {
                 sendLoadError(callback,
@@ -148,9 +162,13 @@ public class SupplementalProcessServiceImpl extends Service {
         public void loadCode(
                 @NonNull IBinder codeToken,
                 @NonNull ApplicationInfo applicationInfo,
-                @NonNull String codeProviderClassName,
+                @Nullable String codeProviderClassName,
                 @NonNull Bundle params,
                 @NonNull ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+            Preconditions.checkNotNull(codeToken, "codeToken should not be null");
+            Preconditions.checkNotNull(applicationInfo, "applicationInfo should not be null");
+            Preconditions.checkNotNull(params, "params should not be null");
+            Preconditions.checkNotNull(callback, "callback should not be null");
             SupplementalProcessServiceImpl.this.loadCode(
                     codeToken, applicationInfo, codeProviderClassName, params, callback);
         }

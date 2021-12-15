@@ -19,7 +19,9 @@ package com.android.supplemental.process;
 import android.content.Context;
 import android.hardware.display.DisplayManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.supplementalprocess.CodeProvider;
 import android.util.Log;
@@ -47,6 +49,8 @@ class CodeHolder {
     private final Random mRandom = new SecureRandom();
     private final SparseArray<SurfaceControlViewHost.SurfacePackage> mSurfacePackages =
             new SparseArray<>();
+
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     void init(Context context, Bundle params,
             ISupplementalProcessToSupplementalProcessManagerCallback callback,
@@ -136,14 +140,24 @@ class CodeHolder {
                 Context windowContext = displayContext.createWindowContext(
                         WindowManager.LayoutParams.TYPE_APPLICATION_PANEL, null);
                 final View view = mCode.getView(windowContext, params);
-                SurfaceControlViewHost host = new SurfaceControlViewHost(windowContext,
-                        mDisplayManager.getDisplay(displayId), token);
-                host.setView(view, view.getWidth(), view.getHeight());
-                SurfaceControlViewHost.SurfacePackage surfacePackage  = host.getSurfacePackage();
-                int surfacePackageId = allocateSurfacePackageId(surfacePackage);
-                mCallback.onSurfacePackageReady(surfacePackage, surfacePackageId, params);
-            } catch (RemoteException e) {
-                Log.e(TAG, "Could not send onSurfacePackageReady", e);
+                // Creating a SurfaceControlViewHost needs to done on the handler thread.
+                mHandler.post(() -> {
+                    try {
+                        SurfaceControlViewHost host = new SurfaceControlViewHost(windowContext,
+                                mDisplayManager.getDisplay(displayId), token);
+                        int width = params.getInt(SupplementalProcessServiceImpl.WIDTH_KEY, 500);
+                        int height = params.getInt(SupplementalProcessServiceImpl.HEIGHT_KEY, 500);
+                        host.setView(view, width, height);
+                        SurfaceControlViewHost.SurfacePackage surfacePackage =
+                                host.getSurfacePackage();
+                        int surfacePackageId = allocateSurfacePackageId(surfacePackage);
+                        mCallback.onSurfacePackageReady(surfacePackage, surfacePackageId, params);
+                    } catch (RemoteException e) {
+                        Log.e(TAG, "Could not send onSurfacePackageReady", e);
+                    } catch (Throwable e) {
+                        sendSurfacePackageError("Error thrown while getting surface package: " + e);
+                    }
+                });
             } catch (Throwable e) {
                 sendSurfacePackageError("Error thrown while getting surface package: " + e);
             }
