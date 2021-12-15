@@ -21,7 +21,7 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 
-class TestService extends Service {
+public class TestService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
