@@ -17,12 +17,15 @@
 package com.android.supplementalprocesscode;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.net.Uri;
 import android.os.Bundle;
 import android.supplementalprocess.CodeProvider;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.Random;
 import java.util.concurrent.Executor;
@@ -65,6 +68,21 @@ public class SampleCodeProvider extends CodeProvider {
             int c = Color.rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256));
             canvas.drawColor(c);
             canvas.drawText("Rendered view", 75, 75, paint);
+
+            setOnClickListener(this::onClickListener);
         }
+
+        private void onClickListener(View view) {
+            Context context = view.getContext();
+            Toast.makeText(context, "Opening url", Toast.LENGTH_LONG).show();
+
+            String url = "http://www.google.com";
+            Intent visitUrl = new Intent(Intent.ACTION_VIEW);
+            visitUrl.setData(Uri.parse(url));
+            visitUrl.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            mContext.startActivity(visitUrl);
+        }
+
     }
 }

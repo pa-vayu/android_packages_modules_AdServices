@@ -60,7 +60,6 @@ public class MainActivity extends Activity {
     }
 
 
-
     private class RemoteCodeCallbackImpl extends IRemoteCodeCallback.Stub {
 
         private RemoteCodeCallbackImpl() {
@@ -93,7 +92,6 @@ public class MainActivity extends Activity {
             makeToast("Failed: " + errorMessage);
         }
     }
-
 
 
     private void registerLoadCodeProviderButton() {

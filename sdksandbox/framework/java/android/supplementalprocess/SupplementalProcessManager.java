@@ -24,6 +24,7 @@ import android.os.RemoteException;
 
 /**
  * Supplemental Process Manager.
+ *
  * @hide
  */
 @SystemService(Context.SUPPLEMENTAL_PROCESS_SERVICE)

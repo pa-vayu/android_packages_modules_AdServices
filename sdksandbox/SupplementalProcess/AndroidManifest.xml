@@ -22,10 +22,13 @@
     android:versionCode="1"
     android:versionName="T-initial">
 
+    <!-- Allows sandboxed SDKs to start activities. -->
+    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"/>
+
     <application>
-        <service android:name=".SupplementalProcessServiceImpl" android:exported="true" >
+        <service android:name=".SupplementalProcessServiceImpl" android:exported="true">
             <intent-filter>
-                <action android:name="com.android.supplemental.process.SupplementalProcessService" />
+                <action android:name="com.android.supplemental.process.SupplementalProcessService"/>
             </intent-filter>
         </service>
     </application>
