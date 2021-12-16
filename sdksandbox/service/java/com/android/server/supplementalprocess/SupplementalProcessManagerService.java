@@ -225,7 +225,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
      *    {@link ISupplementalProcessToSupplementalProcessManagerCallback} interface. We
      *    pass on this object to {@link ISupplementalProcessService} so that remote code
      *    can call back into ManagerService
-     * 4. ManagerService to RemoteCode: When cod is loaded for the first time and remote
+     * 4. ManagerService to RemoteCode: When code is loaded for the first time and remote
      *    code calls back with successful result, it also sends reference to
      *    {@link ISupplementalProcessManagerToSupplementalProcessCallback} callback object.
      *    ManagerService uses this to callback into the remote code.
