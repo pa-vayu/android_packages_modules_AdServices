@@ -48,6 +48,12 @@ bootclasspath_fragment {
     ],
 }
 
+systemserverclasspath_fragment {
+    name: "com.android.supplementalprocess-systemserverclasspath-fragment",
+    standalone_contents: ["service-supplementalprocess"],
+    apex_available: ["com.android.supplementalprocess"],
+}
+
 apex {
     name: "com.android.supplementalprocess",
     manifest: "manifest.json",
@@ -55,6 +61,6 @@ apex {
     file_contexts: ":com.android.supplementalprocess-file_contexts",
     key: "com.android.supplementalprocess.key",
     bootclasspath_fragments: ["com.android.supplementalprocess-bootclasspath-fragment"],
-    java_libs: ["service-supplementalprocess"],
+    systemserverclasspath_fragments: ["com.android.supplementalprocess-systemserverclasspath-fragment"],
     min_sdk_version: "current",
 }
