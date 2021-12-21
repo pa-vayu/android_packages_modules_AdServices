@@ -51,6 +51,6 @@ android_app {
     sdk_version: "system_current",
     min_sdk_version: "current", // TODO: change once SDK is finalized
     updatable: true,
-    certificate: "platform", // TODO(b/204989872): sign with a supplemental_process key
+    certificate: "supplemental_process",
     apex_available: ["com.android.supplementalprocess"],
 }
