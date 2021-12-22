@@ -30,6 +30,7 @@ import android.view.SurfaceControlViewHost;
 import android.view.View;
 import android.view.WindowManager;
 
+import java.io.PrintWriter;
 import java.security.SecureRandom;
 import java.util.Random;
 
@@ -83,6 +84,12 @@ class CodeHolder {
         } catch (Throwable e) {
             sendLoadCodeError("Error thrown during init: " + e);
         }
+    }
+
+    void dump(PrintWriter writer) {
+        writer.print("mInitialized: " + mInitialized);
+        final String mCodeClass = mCode == null ? "null" : mCode.getClass().getName();
+        writer.println(" mCode class: " + mCodeClass);
     }
 
     private void sendLoadCodeSuccess() {
