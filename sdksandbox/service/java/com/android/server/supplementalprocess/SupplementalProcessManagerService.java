@@ -16,6 +16,7 @@
 
 package com.android.server.supplementalprocess;
 
+import android.annotation.RequiresPermission;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -36,6 +37,9 @@ import com.android.server.SystemService;
 import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
 import com.android.supplemental.process.ISupplementalProcessService;
 import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
+
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -181,6 +185,26 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     @Override
     public void destroyCode(int id) {}
 
+    @Override
+    @RequiresPermission(android.Manifest.permission.DUMP)
+    protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+        mContext.enforceCallingPermission(android.Manifest.permission.DUMP,
+                "Can't dump " + TAG);
+
+        // TODO(b/211575098): Use IndentingPrintWriter for better formatting
+        synchronized (mAppAndRemoteCodeLinks) {
+            writer.println("mAppAndRemoteCodeLinks size: " + mAppAndRemoteCodeLinks.size());
+        }
+
+        writer.println("mCodeTokenManager:");
+        mCodeTokenManager.dump(writer);
+        writer.println();
+
+        writer.println("mServiceProvider:");
+        mServiceProvider.dump(writer);
+        writer.println();
+    }
+
     /**
      * Clean up all internal data structures related to {@code codeToken}
      */
@@ -221,6 +245,21 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             synchronized (mCodeTokens) {
                 mCodeTokens.remove(mReverseCodeTokens.get(codeToken));
                 mReverseCodeTokens.remove(codeToken);
+            }
+        }
+
+        void dump(PrintWriter writer) {
+            synchronized (mCodeTokens) {
+                if (mCodeTokens.isEmpty()) {
+                    writer.println("mCodeTokens is empty");
+                } else {
+                    writer.print("mCodeTokens size: ");
+                    writer.println(mCodeTokens.size());
+                    for (Pair<Integer, String> pair : mCodeTokens.keySet()) {
+                        writer.printf("callingUid: %s, name: %s", pair.first, pair.second);
+                        writer.println();
+                    }
+                }
             }
         }
     }

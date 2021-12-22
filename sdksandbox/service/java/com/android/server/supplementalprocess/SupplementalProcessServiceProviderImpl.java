@@ -33,6 +33,9 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
 import com.android.supplemental.process.ISupplementalProcessService;
 
+import java.io.PrintWriter;
+import java.util.Map;
+
 import javax.annotation.concurrent.ThreadSafe;
 
 @ThreadSafe
@@ -164,6 +167,24 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
         final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
         synchronized (mLock) {
             return (mUserSupplementalProcessConnections.containsKey(callingUser));
+        }
+    }
+
+    @Override
+    public void dump(PrintWriter writer) {
+        synchronized (mLock) {
+            if (mUserSupplementalProcessConnections.isEmpty()) {
+                writer.println("mUserSupplementalProcessConnections is empty");
+            } else {
+                writer.print("mUserSupplementalProcessConnections size: ");
+                writer.println(mUserSupplementalProcessConnections.size());
+                for (Map.Entry<UserHandle, SupplementalProcessConnection> entry :
+                        mUserSupplementalProcessConnections.entrySet()) {
+                    writer.printf("userHandle: %s, isConnected: %s, apps: %s", entry.getKey(),
+                            entry.getValue().isConnected(), entry.getValue().mHostingApps);
+                    writer.println();
+                }
+            }
         }
     }
 

@@ -49,6 +49,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.io.FileDescriptor;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -213,6 +216,11 @@ public class SupplementalProcessManagerServiceUnitTest {
         assertThat(callback.getSurfacePackageErrorMsg()).contains("bad surface");
         assertThat(callback.getSurfacePackageErrorCode())
                 .isEqualTo(SupplementalProcessManager.SURFACE_PACKAGE_INTERNAL_ERROR);
+    }
+
+    @Test(expected = SecurityException.class)
+    public void testDumpWithoutPermission() {
+        mService.dump(new FileDescriptor(), new PrintWriter(new StringWriter()), new String[0]);
     }
 
     // ManagerToAppCallback

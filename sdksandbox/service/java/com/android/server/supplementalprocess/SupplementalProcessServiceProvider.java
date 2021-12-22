@@ -20,6 +20,8 @@ import android.os.IBinder;
 
 import com.android.supplemental.process.ISupplementalProcessService;
 
+import java.io.PrintWriter;
+
 /**
  * Interface to get hold of SupplementalProcessService
  */
@@ -33,4 +35,7 @@ public interface SupplementalProcessServiceProvider {
     ISupplementalProcessService bindService(int callingUid, IBinder appBinder);
     /** Check if service is connected */
     boolean isServiceBound(int callingUid);
+    /** Dump debug information for adb shell dumpsys */
+    default void dump(PrintWriter writer) {
+    }
 }

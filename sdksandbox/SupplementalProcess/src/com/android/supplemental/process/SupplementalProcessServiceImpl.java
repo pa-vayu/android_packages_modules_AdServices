@@ -16,6 +16,7 @@
 
 package com.android.supplemental.process;
 
+import android.annotation.RequiresPermission;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -95,6 +96,7 @@ public class SupplementalProcessServiceImpl extends Service {
     }
 
     @Override
+    @RequiresPermission(android.Manifest.permission.DUMP)
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         mInjector.getContext().enforceCallingPermission(android.Manifest.permission.DUMP,
                 "Can't dump " + TAG);
