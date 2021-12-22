@@ -47,7 +47,6 @@ import java.util.Map;
 public class SupplementalProcessServiceImpl extends Service {
 
     private static final String TAG = "SupplementalProcess";
-    private Injector mInjector;
 
     // The options below may be passed in a {@code Bundle} while loading or rendering.
     // TODO(b/210670819): Encapsulate in a parcelable.
@@ -55,9 +54,10 @@ public class SupplementalProcessServiceImpl extends Service {
     public static final String WIDTH_KEY = "width";
     public static final String HEIGHT_KEY = "height";
 
-
     @GuardedBy("mHeldCode")
     private final Map<IBinder, CodeHolder> mHeldCode = new ArrayMap<>();
+    private Injector mInjector;
+    private ISupplementalProcessService.Stub mBinder;
 
     static class Injector {
 
@@ -95,6 +95,13 @@ public class SupplementalProcessServiceImpl extends Service {
         mInjector = new Injector(getApplicationContext());
     }
 
+    public void loadCode(
+            IBinder codeToken, ApplicationInfo applicationInfo, String codeProviderClassName,
+            Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
+        enforceCallerIsSystemServer();
+        loadCodeInternal(codeToken, applicationInfo, codeProviderClassName, params, callback);
+    }
+
     @Override
     @RequiresPermission(android.Manifest.permission.DUMP)
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
@@ -115,8 +122,6 @@ public class SupplementalProcessServiceImpl extends Service {
         }
     }
 
-    private ISupplementalProcessService.Stub mBinder;
-
     private void enforceCallerIsSystemServer() {
         if (mInjector.getCallingUid() != Process.SYSTEM_UID) {
             throw new SecurityException(
@@ -124,19 +129,6 @@ public class SupplementalProcessServiceImpl extends Service {
                             + mInjector.getCallingUid());
         }
         Binder.clearCallingIdentity();
-    }
-
-    private void sendLoadError(ISupplementalProcessToSupplementalProcessManagerCallback callback,
-            int errorCode, String message) {
-        try {
-            callback.onLoadCodeError(errorCode, message);
-        } catch (RemoteException e) {
-            Log.e(TAG, "Could not send onLoadCodeError");
-        }
-    }
-
-    private ClassLoader getClassLoader(ApplicationInfo appInfo) {
-        return new DexClassLoader(appInfo.sourceDir, null, null, getClass().getClassLoader());
     }
 
     private void loadCodeInternal(@NonNull IBinder codeToken,
@@ -183,10 +175,17 @@ public class SupplementalProcessServiceImpl extends Service {
         }
     }
 
-    void loadCode(IBinder codeToken, ApplicationInfo applicationInfo, String codeProviderClassName,
-            Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
-        enforceCallerIsSystemServer();
-        loadCodeInternal(codeToken, applicationInfo, codeProviderClassName, params, callback);
+    private void sendLoadError(ISupplementalProcessToSupplementalProcessManagerCallback callback,
+            int errorCode, String message) {
+        try {
+            callback.onLoadCodeError(errorCode, message);
+        } catch (RemoteException e) {
+            Log.e(TAG, "Could not send onLoadCodeError");
+        }
+    }
+
+    private ClassLoader getClassLoader(ApplicationInfo appInfo) {
+        return new DexClassLoader(appInfo.sourceDir, null, null, getClass().getClassLoader());
     }
 
     final class SupplementalProcessServiceDelegate extends ISupplementalProcessService.Stub {

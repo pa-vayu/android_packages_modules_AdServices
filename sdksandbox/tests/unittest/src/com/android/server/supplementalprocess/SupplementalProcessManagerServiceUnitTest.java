@@ -19,13 +19,6 @@ package com.android.server.supplementalprocess;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-
-
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -48,6 +41,8 @@ import com.android.supplemental.process.ISupplementalProcessToSupplementalProces
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -62,16 +57,15 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     private SupplementalProcessManagerService mService;
     private FakeSupplementalProcessService mSupplementalProcessService;
-
+    private FakeSupplementalProcessProvider mProvider;
     private static final String CODE_PROVIDER_PACKAGE = "com.android.codeprovider";
 
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getContext();
         mSupplementalProcessService = new FakeSupplementalProcessService();
-        SupplementalProcessServiceProvider provider =
-                new FakeSupplementalProcessProvider(mSupplementalProcessService);
-        mService = new SupplementalProcessManagerService(context, provider);
+        mProvider = new FakeSupplementalProcessProvider(mSupplementalProcessService);
+        mService = new SupplementalProcessManagerService(context, mProvider);
     }
 
     @Test
@@ -182,8 +176,8 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Test
     public void testRequestSurfacePackageFailedAfterAppDied() throws Exception {
-        FakeInitCodeCallback callback = spy(new FakeInitCodeCallback());
-        doReturn(mock(Binder.class)).when(callback).asBinder();
+        FakeInitCodeCallback callback = Mockito.spy(new FakeInitCodeCallback());
+        Mockito.doReturn(Mockito.mock(Binder.class)).when(callback).asBinder();
 
         ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
                 .forClass(IBinder.DeathRecipient.class);
@@ -192,7 +186,8 @@ public class SupplementalProcessManagerServiceUnitTest {
         mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
 
-        verify(callback.asBinder()).linkToDeath(deathRecipient.capture(), eq(0));
+        Mockito.verify(callback.asBinder())
+                .linkToDeath(deathRecipient.capture(), ArgumentMatchers.eq(0));
 
         // App Died
         deathRecipient.getValue().binderDied();
@@ -221,6 +216,24 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test(expected = SecurityException.class)
     public void testDumpWithoutPermission() {
         mService.dump(new FileDescriptor(), new PrintWriter(new StringWriter()), new String[0]);
+    }
+
+    @Test
+    public void testSupplementalProcessUnbindingWhenAppDied() throws Exception {
+        IRemoteCodeCallback.Stub callback = Mockito.spy(IRemoteCodeCallback.Stub.class);
+        int callingUid = Binder.getCallingUid();
+        assertThat(mProvider.isServiceBound(callingUid)).isFalse();
+
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+
+        ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
+                .forClass(IBinder.DeathRecipient.class);
+        Mockito.verify(callback.asBinder(), Mockito.times(1))
+                .linkToDeath(deathRecipient.capture(), Mockito.eq(0));
+
+        assertThat(mProvider.isServiceBound(callingUid)).isTrue();
+        deathRecipient.getValue().binderDied();
+        assertThat(mProvider.isServiceBound(callingUid)).isFalse();
     }
 
     // ManagerToAppCallback
@@ -332,7 +345,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public ISupplementalProcessService bindService(int callingUid, IBinder appBinder) {
+        public ISupplementalProcessService bindService(int callingUid) {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             if (mService.containsKey(callingUser)) {
                 return mService.get(callingUser);
@@ -346,6 +359,12 @@ public class SupplementalProcessManagerServiceUnitTest {
         public boolean isServiceBound(int callingUid) {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             return mService.containsKey(callingUser);
+        }
+
+        @Override
+        public void unbindService(int callingUid) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
+            mService.remove(callingUser);
         }
     }
 
