@@ -19,6 +19,13 @@ package com.android.server.supplementalprocess;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
+
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -40,6 +47,7 @@ import com.android.supplemental.process.ISupplementalProcessToSupplementalProces
 
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -167,6 +175,32 @@ public class SupplementalProcessManagerServiceUnitTest {
         mService.requestSurfacePackage(codeToken, new Binder(), 0, new Bundle());
         mSupplementalProcessService.sendSurfacePackageReady();
         assertThat(callback.isRequestSurfacePackageSuccessful()).isTrue();
+    }
+
+    @Test
+    public void testRequestSurfacePackageFailedAfterAppDied() throws Exception {
+        FakeInitCodeCallback callback = spy(new FakeInitCodeCallback());
+        doReturn(mock(Binder.class)).when(callback).asBinder();
+
+        ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
+                .forClass(IBinder.DeathRecipient.class);
+
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mSupplementalProcessService.sendLoadCodeSuccessful();
+        assertThat(callback.isLoadCodeSuccessful()).isTrue();
+
+        verify(callback.asBinder()).linkToDeath(deathRecipient.capture(), eq(0));
+
+        // App Died
+        deathRecipient.getValue().binderDied();
+
+        // After App Died
+        SecurityException thrown = assertThrows(
+                SecurityException.class,
+                () -> mService.requestSurfacePackage(callback.getCodeToken(), new Binder(),
+                        0, new Bundle())
+        );
+        assertThat(thrown).hasMessageThat().contains("codeToken is invalid");
     }
 
     @Test

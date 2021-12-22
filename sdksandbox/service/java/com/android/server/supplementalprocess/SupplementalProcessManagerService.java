@@ -91,6 +91,20 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             }
         }
 
+        // Register a death recipient to clean up codeToken after app dies.
+        try {
+            callback.asBinder().linkToDeath(new IBinder.DeathRecipient() {
+                @Override
+                public void binderDied() {
+                    cleanUp(codeToken);
+                }
+            }, 0);
+        } catch (RemoteException re) {
+            // App has already died, cleanup code token and link
+            cleanUp(codeToken);
+            return;
+        }
+
         // Step 2: fetch the installed code in device
         final ApplicationInfo info = getCodeInfo(name);
         if (info == null) {
@@ -171,8 +185,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
      * Clean up all internal data structures related to {@code codeToken}
      */
     private void cleanUp(IBinder codeToken) {
-        // TODO(b/209465368): We should call cleanUp when calling app is dead
-
         // Destroy the codeToken first, to free up the {callingUid, name} pair
         mCodeTokenManager.destroy(codeToken);
         // Now clean up rest of the state which is using an obsolete codeToken
