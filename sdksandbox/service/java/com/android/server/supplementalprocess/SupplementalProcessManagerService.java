@@ -202,7 +202,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                         final ISupplementalProcessService mService =
                                 ISupplementalProcessService.Stub.asInterface(service);
                         Log.i(TAG, "Supplemental process has been bound");
-                        mServiceProvider.registerServiceForApp(callingUid, mService);
+                        mServiceProvider.setBoundServiceForApp(callingUid, mService);
 
                         // Ensuring the code is not loaded again if connection restarted
                         if (!mIsServiceBound) {
@@ -216,12 +216,12 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                         // Supplemental process crashed or killed, system will start it again.
                         // TODO(b/204991850): Handle restarts differently
                         //  (e.g. Exponential backoff retry strategy)
-                        mServiceProvider.registerServiceForApp(callingUid, null);
+                        mServiceProvider.setBoundServiceForApp(callingUid, null);
                     }
 
                     @Override
                     public void onBindingDied(ComponentName name) {
-                        mServiceProvider.registerServiceForApp(callingUid, null);
+                        mServiceProvider.setBoundServiceForApp(callingUid, null);
                         mServiceProvider.unbindService(callingUid);
                         mServiceProvider.bindService(callingUid, this);
                     }
