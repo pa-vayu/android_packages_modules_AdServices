@@ -1,4 +1,4 @@
-// Copyright (C) 2021 The Android Open Source Project
+// Copyright (C) 2022 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,34 +16,16 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-android_test {
-    name: "SupplementalProcessManagerServiceUnitTests",
+java_library {
+    name: "SupplementalProcessTestUtils",
     srcs: [
         "src/**/*.java",
         ":framework-supplementalprocess-sources",
     ],
-    static_libs: [
-        "service-supplementalprocess.impl",
-        "androidx.test.runner",
-        "mockito-target-extended-minus-junit4",
-        "SupplementalProcessTestUtils",
+    libs: [
         "truth-prebuilt",
     ],
-    libs: [
-        "android.test.base",
-        "android.test.mock",
-        "android.test.runner",
+    visibility: [
+        "//packages/modules/SupplementalProcess/tests:__subpackages__",
     ],
-    jni_libs: [
-        // Required for ExtendedMockito
-        "libdexmakerjvmtiagent",
-        "libstaticjvmtiagent",
-    ],
-    data: [
-      ":SampleCodeProviderApp",
-      ":SampleServiceApp"
-    ],
-    min_sdk_version: "Tiramisu",
-    target_sdk_version: "current",
-    test_suites: ["general-tests"],
 }

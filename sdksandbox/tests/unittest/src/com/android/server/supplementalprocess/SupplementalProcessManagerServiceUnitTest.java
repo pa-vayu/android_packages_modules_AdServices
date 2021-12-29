@@ -30,8 +30,8 @@ import android.os.RemoteException;
 import android.os.UserHandle;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
+import android.supplementalprocess.testutils.FakeRemoteCodeCallback;
 import android.util.ArrayMap;
-import android.view.SurfaceControlViewHost;
 
 import androidx.annotation.Nullable;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -49,8 +49,6 @@ import org.mockito.Mockito;
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Unit tests for {@link SupplementalProcessManagerService}.
@@ -72,7 +70,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Test
     public void testLoadCodeIsSuccessful() throws Exception {
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
         // Assume SupplementalProcess loads successfully
         mSupplementalProcessService.sendLoadCodeSuccessful();
@@ -80,8 +78,8 @@ public class SupplementalProcessManagerServiceUnitTest {
     }
 
     @Test
-    public void testLoadCodePackageDoesNotExist() {
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+    public void testLoadCodePackageDoesNotExist() throws Exception {
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mService.loadCode("does.not.exist", "1", new Bundle(), callback);
 
         // Verify loading failed
@@ -93,7 +91,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Test
     public void testLoadCode_errorFromSupplementalProcess() throws Exception {
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
         mSupplementalProcessService.sendLoadCodeError();
 
@@ -107,7 +105,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testLoadCode_successOnFirstLoad_errorOnLoadAgain() throws Exception {
         // Load it once
         {
-            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
             mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
             // Assume SupplementalProcess loads successfully
             mSupplementalProcessService.sendLoadCodeSuccessful();
@@ -116,7 +114,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         // Load it again
         {
-            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
             mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
             // Verify loading failed
             assertThat(callback.isLoadCodeSuccessful()).isFalse();
@@ -130,7 +128,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testLoadCode_errorOnFirstLoad_canBeLoadedAgain() throws Exception {
         // Load code, but make it fail
         {
-            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
             mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
             // Assume SupplementalProcess load fails
             mSupplementalProcessService.sendLoadCodeError();
@@ -139,7 +137,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         // Caller should be able to retry loading the code
         {
-            FakeInitCodeCallback callback = new FakeInitCodeCallback();
+            FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
             mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
             // Assume SupplementalProcess loads successfully
             mSupplementalProcessService.sendLoadCodeSuccessful();
@@ -161,7 +159,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test
     public void testRequestSurfacePackage() throws Exception {
         // 1. We first need to collect a proper codeToken by calling loadCode
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
         mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
@@ -178,7 +176,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Test
     public void testRequestSurfacePackageFailedAfterAppDied() throws Exception {
-        FakeInitCodeCallback callback = Mockito.spy(new FakeInitCodeCallback());
+        FakeRemoteCodeCallback callback = Mockito.spy(new FakeRemoteCodeCallback());
         Mockito.doReturn(Mockito.mock(Binder.class)).when(callback).asBinder();
 
         ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
@@ -205,7 +203,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Test
     public void testSurfacePackageError() throws Exception {
-        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
         // Assume SurfacePackage encounters an error.
         mSupplementalProcessService.sendSurfacePackageError(
@@ -236,102 +234,6 @@ public class SupplementalProcessManagerServiceUnitTest {
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNotNull();
         deathRecipient.getValue().binderDied();
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
-    }
-
-    // ManagerToAppCallback
-    private static class FakeInitCodeCallback extends IRemoteCodeCallback.Stub {
-        private final CountDownLatch mLoadCodeLatch = new CountDownLatch(1);
-        private final CountDownLatch mSurfacePackageLatch = new CountDownLatch(1);
-
-        private boolean mLoadCodeSuccess;
-        private boolean mSurfacePackageSuccess;
-
-        private int mErrorCode;
-        private String mErrorMsg;
-
-        private IBinder mCodeToken;
-
-        @Override
-        public void onLoadCodeSuccess(IBinder codeToken, Bundle params) {
-            mCodeToken = codeToken;
-            mLoadCodeSuccess = true;
-            mLoadCodeLatch.countDown();
-        }
-
-        @Override
-        public void onLoadCodeFailure(int errorCode, String errorMsg) {
-            mLoadCodeSuccess = false;
-            mErrorCode = errorCode;
-            mErrorMsg = errorMsg;
-            mLoadCodeLatch.countDown();
-        }
-
-        @Override
-        public void onSurfacePackageError(int errorCode, String errorMsg) {
-            mSurfacePackageSuccess = false;
-            mErrorCode = errorCode;
-            mErrorMsg = errorMsg;
-            mSurfacePackageLatch.countDown();
-        }
-
-        @Override
-        public void onSurfacePackageReady(SurfaceControlViewHost.SurfacePackage surfacePackage,
-                    int surfacePackageId, Bundle params) {
-            mSurfacePackageSuccess = true;
-            mSurfacePackageLatch.countDown();
-        }
-
-        void waitForLatch(CountDownLatch latch) {
-            try {
-                // Wait for callback to be called
-                if (!latch.await(2, TimeUnit.SECONDS)) {
-                    throw new IllegalStateException("Callback not called within 2 seconds");
-                }
-            } catch (InterruptedException e) {
-                throw new IllegalStateException(
-                        "Interrupted while waiting on callback: " + e.getMessage());
-            }
-        }
-
-        boolean isLoadCodeSuccessful() {
-            waitForLatch(mLoadCodeLatch);
-            return mLoadCodeSuccess;
-        }
-
-        int getLoadCodeErrorCode() {
-            waitForLatch(mLoadCodeLatch);
-            assertThat(mLoadCodeSuccess).isFalse();
-            return mErrorCode;
-        }
-
-        String getLoadCodeErrorMsg() {
-            waitForLatch(mLoadCodeLatch);
-            assertThat(mLoadCodeSuccess).isFalse();
-            return mErrorMsg;
-        }
-
-        int getSurfacePackageErrorCode() {
-            waitForLatch(mSurfacePackageLatch);
-            assertThat(mSurfacePackageSuccess).isFalse();
-            return mErrorCode;
-        }
-
-        String getSurfacePackageErrorMsg() {
-            waitForLatch(mSurfacePackageLatch);
-            assertThat(mSurfacePackageSuccess).isFalse();
-            return mErrorMsg;
-        }
-
-        IBinder getCodeToken() {
-            waitForLatch(mLoadCodeLatch);
-            assertThat(mLoadCodeSuccess).isTrue();
-            return mCodeToken;
-        }
-
-        boolean isRequestSurfacePackageSuccessful() {
-            waitForLatch(mSurfacePackageLatch);
-            return mSurfacePackageSuccess;
-        }
     }
 
     /**
@@ -422,6 +324,5 @@ public class SupplementalProcessManagerServiceUnitTest {
                 mSurfacePackageRequested = true;
             }
         }
-
     }
 }
