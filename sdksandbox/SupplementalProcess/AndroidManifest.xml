@@ -32,6 +32,8 @@
                 <action android:name="com.android.supplemental.process.SupplementalProcessService"/>
             </intent-filter>
         </service>
+        <property android:name="android.internal.PROPERTY_NO_APP_DATA_STORAGE"
+                  android:value="true" />
     </application>
 
 </manifest>
