@@ -28,6 +28,7 @@ java_library {
         ],
     },
     sdk_version: "system_server_current",
+    min_sdk_version: "Tiramisu",
     libs: [
         "framework-supplementalprocess.impl",
         "jsr305",

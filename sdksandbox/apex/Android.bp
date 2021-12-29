@@ -62,5 +62,5 @@ apex {
     key: "com.android.supplementalprocess.key",
     bootclasspath_fragments: ["com.android.supplementalprocess-bootclasspath-fragment"],
     systemserverclasspath_fragments: ["com.android.supplementalprocess-systemserverclasspath-fragment"],
-    min_sdk_version: "current",
+    min_sdk_version: "Tiramisu",
 }

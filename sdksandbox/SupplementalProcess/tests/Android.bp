@@ -19,8 +19,8 @@ package {
 android_test {
     name: "SupplementalProcessTests",
 
-    target_sdk_version: "current",
-    min_sdk_version: "current",
+    target_sdk_version: "Tiramisu",
+    min_sdk_version: "Tiramisu",
 
     srcs: [
         "src/**/*.java",
