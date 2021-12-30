@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,30 +13,15 @@
 // limitations under the License.
 
 package {
+    default_visibility: [":__subpackages__"],
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-java_library {
-    name: "service-supplementalprocess",
-    srcs: [
-        "java/**/*.java",
-        ":supplementalprocess_aidl"
-    ],
-    aidl: {
-        include_dirs: [
-            "frameworks/base/core/java", // For android.os.IBinders
-        ],
+java_defaults {
+    name: "supplementalprocess-java-defaults",
+    lint: {
+        error_checks: ["NewApi"],
+        strict_updatability_linting: true,
     },
-    sdk_version: "system_server_current",
     min_sdk_version: "Tiramisu",
-    libs: [
-        "framework-supplementalprocess.impl",
-        "jsr305",
-    ],
-    defaults: [
-        "framework-system-server-module-defaults",
-        "supplementalprocess-java-defaults",
-    ],
-    installable: true,
-    apex_available: ["com.android.supplementalprocess"],
 }
