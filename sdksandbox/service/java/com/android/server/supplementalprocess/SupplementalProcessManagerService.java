@@ -94,21 +94,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                 return;
             }
         }
-
-        // Register a death recipient to clean up codeToken after app dies.
-        try {
-            callback.asBinder().linkToDeath(new IBinder.DeathRecipient() {
-                @Override
-                public void binderDied() {
-                    cleanUp(codeToken);
-                }
-            }, 0);
-        } catch (RemoteException re) {
-            // App has already died, cleanup code token and link
-            cleanUp(codeToken);
-            return;
-        }
-
         // Step 2: fetch the installed code in device
         final ApplicationInfo info = getCodeInfo(name);
         if (info == null) {
@@ -122,7 +107,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         // Step 3: invoke CodeLoaderService to load the code
         try {
             ISupplementalProcessService service =
-                    mServiceProvider.bindService(callingUid, callback.asBinder());
+                    mServiceProvider.bindService(callingUid);
             try {
                 // TODO(b/209621566): Remove the need for this crude workaround.
                 Thread.sleep(1000);
@@ -142,6 +127,18 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             Log.w(TAG, errorMsg, e);
             link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
                     errorMsg);
+        }
+
+        // Register a death recipient to clean up codeToken and unbind its service after app dies.
+        try {
+            callback.asBinder().linkToDeath(() -> {
+                cleanUp(codeToken);
+                mServiceProvider.unbindService(callingUid);
+            }, 0);
+        } catch (RemoteException re) {
+            // App has already died, cleanup code token and link, and unbind its service
+            cleanUp(codeToken);
+            mServiceProvider.unbindService(callingUid);
         }
     }
 

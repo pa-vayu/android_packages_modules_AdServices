@@ -20,13 +20,7 @@ import static android.os.Process.myUid;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import android.content.Context;
-import android.os.Binder;
-import android.os.IBinder;
 
 import androidx.test.InstrumentationRegistry;
 
@@ -34,7 +28,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for {@link SupplementalProcessServiceProviderImpl}.
@@ -56,23 +49,8 @@ public class SupplementalProcessServiceProviderImplUnitTest {
 
         // Supplemental process is loaded on demand, so should not be there initially
         assertThat(mServiceProvider.isServiceBound(curUid)).isFalse();
-        mServiceProvider.bindService(curUid, new Binder());
+        mServiceProvider.bindService(curUid);
         assertThat(mServiceProvider.isServiceBound(curUid)).isTrue();
-    }
-
-    @Test
-    public void testSupplementalProcessUnbinding() throws Exception {
-        final int curUid = myUid();
-
-        ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
-                .forClass(IBinder.DeathRecipient.class);
-        IBinder appBinder = mock(Binder.class);
-        mServiceProvider.bindService(curUid, appBinder);
-
-        verify(appBinder).linkToDeath(deathRecipient.capture(), eq(0));
-        assertThat(mServiceProvider.isServiceBound(curUid)).isTrue();
-        deathRecipient.getValue().binderDied();
-        assertThat(mServiceProvider.isServiceBound(curUid)).isFalse();
     }
 
     private static class Injector extends SupplementalProcessServiceProviderImpl.Injector {
