@@ -53,4 +53,7 @@ android_app {
     updatable: true,
     certificate: "supplemental_process",
     apex_available: ["com.android.supplementalprocess"],
+    defaults: [
+        "supplementalprocess-java-defaults",
+    ],
 }
