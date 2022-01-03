@@ -112,6 +112,7 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
                             callingUser);
 
             if (!bound) {
+                mContext.unbindService(userConnection.serviceConnection);
                 Log.e(TAG, "Could not find supplemental process service.");
                 return null;
             }
