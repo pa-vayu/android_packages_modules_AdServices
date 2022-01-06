@@ -17,7 +17,9 @@
 package com.android.server.supplementalprocess;
 
 import android.annotation.RequiresPermission;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
@@ -104,30 +106,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         }
         // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
 
-        // Step 3: invoke CodeLoaderService to load the code
-        try {
-            ISupplementalProcessService service =
-                    mServiceProvider.bindService(callingUid);
-            try {
-                // TODO(b/209621566): Remove the need for this crude workaround.
-                Thread.sleep(1000);
-            } catch (Exception e) {
-                Log.e(TAG, "Could not sleep" , e);
-            }
-            if (service == null) {
-                link.sendLoadCodeErrorToApp(
-                        SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
-                        "Failed to bind to SupplementalProcess service");
-                return;
-            }
-            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
-            service.loadCode(codeToken, info, "", params, link);
-        } catch (RemoteException e) {
-            String errorMsg = "Failed to contact SupplementalProcessService";
-            Log.w(TAG, errorMsg, e);
-            link.sendLoadCodeErrorToApp(SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
-                    errorMsg);
-        }
+        invokeCodeLoaderServiceToLoadCode(callingUid, codeToken, info, params, link);
 
         // Register a death recipient to clean up codeToken and unbind its service after app dies.
         try {
@@ -202,6 +181,75 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         writer.println();
     }
 
+    private void invokeCodeLoaderServiceToLoadCode(
+            int callingUid, IBinder codeToken, ApplicationInfo info, Bundle params,
+            AppAndRemoteCodeLink link) {
+
+        // check first if service already bound
+        ISupplementalProcessService service = mServiceProvider.getBoundServiceForApp(callingUid);
+        if (service != null) {
+            loadCodeForService(codeToken, info, params, link, service);
+            return;
+        }
+
+        mServiceProvider.bindService(
+                callingUid,
+                new ServiceConnection() {
+                    private boolean mIsServiceBound = false;
+
+                    @Override
+                    public void onServiceConnected(ComponentName name, IBinder service) {
+                        final ISupplementalProcessService mService =
+                                ISupplementalProcessService.Stub.asInterface(service);
+                        Log.i(TAG, "Supplemental process has been bound");
+                        mServiceProvider.registerServiceForApp(callingUid, mService);
+
+                        // Ensuring the code is not loaded again if connection restarted
+                        if (!mIsServiceBound) {
+                            loadCodeForService(codeToken, info, params, link, mService);
+                            mIsServiceBound = true;
+                        }
+                    }
+
+                    @Override
+                    public void onServiceDisconnected(ComponentName name) {
+                        // Supplemental process crashed or killed, system will start it again.
+                        // TODO(b/204991850): Handle restarts differently
+                        //  (e.g. Exponential backoff retry strategy)
+                        mServiceProvider.registerServiceForApp(callingUid, null);
+                    }
+
+                    @Override
+                    public void onBindingDied(ComponentName name) {
+                        mServiceProvider.registerServiceForApp(callingUid, null);
+                        mServiceProvider.unbindService(callingUid);
+                        mServiceProvider.bindService(callingUid, this);
+                    }
+
+                    @Override
+                    public void onNullBinding(ComponentName name) {
+                        link.sendLoadCodeErrorToApp(
+                                SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR,
+                                "Failed to bind the service");
+                    }
+                }
+        );
+
+    }
+
+    private void loadCodeForService(
+             IBinder codeToken, ApplicationInfo info, Bundle params,
+            AppAndRemoteCodeLink link, ISupplementalProcessService service) {
+        try {
+            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
+            service.loadCode(codeToken, info, "", params, link);
+        } catch (RemoteException e) {
+            String errorMsg = "Failed to load code";
+            Log.w(TAG, errorMsg, e);
+            link.sendLoadCodeErrorToApp(
+                    SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR, errorMsg);
+        }
+    }
     /**
      * Clean up all internal data structures related to {@code codeToken}
      */

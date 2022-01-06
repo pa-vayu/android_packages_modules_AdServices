@@ -17,12 +17,9 @@
 package com.android.server.supplementalprocess;
 
 import android.annotation.Nullable;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.os.Binder;
-import android.os.IBinder;
 import android.os.UserHandle;
 import android.util.ArrayMap;
 import android.util.ArraySet;
@@ -34,6 +31,7 @@ import com.android.supplemental.process.ISupplementalProcessService;
 
 import java.io.PrintWriter;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -63,65 +61,38 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
 
     @Override
     @Nullable
-    public ISupplementalProcessService bindService(int appUid) {
+    public void bindService(int appUid, ServiceConnection serviceConnection) {
         final UserHandle callingUser = UserHandle.getUserHandleForUid(appUid);
+
         synchronized (mLock) {
-            Log.i(TAG, "Binding app " + appUid + " to supplemental process for " + callingUser);
-            if (isServiceBound(appUid)) {
+            if (getBoundServiceForApp(appUid) != null) {
                 Log.i(TAG, "Supplemental process for " + callingUser + " is already bound");
                 registerApp(appUid);
-                return getSupplementalProcessConnection(appUid).supplementalProcessService;
+                return;
             }
 
-            SupplementalProcessConnection userConnection = new SupplementalProcessConnection();
-            userConnection.serviceConnection = new ServiceConnection() {
-                @Override
-                public void onServiceConnected(ComponentName name, IBinder service) {
-                    userConnection.supplementalProcessService =
-                            ISupplementalProcessService.Stub.asInterface(service);
-                }
+            Log.i(TAG, "Binding supplemental process for " + callingUser);
 
-                @Override
-                public void onServiceDisconnected(ComponentName name) {
-                    // Supplemental process crashed or was killed, system will start it again.
-                    // TODO(b/204991850): Handle restarts differently
-                    //  (e.g. Exponential backoff retry strategy)
-                    userConnection.supplementalProcessService = null;
-                }
+            SupplementalProcessConnection supplementalProcessConnection =
+                    new SupplementalProcessConnection(serviceConnection);
 
-                @Override
-                public void onBindingDied(ComponentName name) {
-                    final long token = Binder.clearCallingIdentity();
-                    try {
-                        unbindService(appUid);
-                        bindService(appUid);
-                    } finally {
-                        Binder.restoreCallingIdentity(token);
-                    }
-                }
-            };
-
-            final Intent intent = new Intent(mInjector.getServiceClass());
-            intent.setPackage(mInjector.getServicePackage());
-
-            boolean bound =
-                    mContext.bindServiceAsUser(
-                            intent,
-                            userConnection.serviceConnection,
-                            Context.BIND_AUTO_CREATE,
-                            callingUser);
+            final Intent intent = new Intent(mInjector.getServiceClass())
+                    .setPackage(mInjector.getServicePackage());
+            boolean bound = mContext.bindServiceAsUser(
+                    intent,
+                    serviceConnection,
+                    Context.BIND_AUTO_CREATE,
+                    callingUser);
 
             if (!bound) {
-                mContext.unbindService(userConnection.serviceConnection);
-                Log.e(TAG, "Could not find supplemental process service.");
-                return null;
+                mContext.unbindService(serviceConnection);
+                // a way to notify manager that binding never happened
+                serviceConnection.onNullBinding(null);
             }
 
-            mUserSupplementalProcessConnections.put(callingUser, userConnection);
-            Log.i(TAG, "Supplemental process has been bound");
+            mUserSupplementalProcessConnections.put(callingUser, supplementalProcessConnection);
 
             registerApp(appUid);
-            return getSupplementalProcessConnection(appUid).supplementalProcessService;
         }
     }
 
@@ -166,17 +137,33 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
 
             final UserHandle callingUser = UserHandle.getUserHandleForUid(appUid);
 
-            mContext.unbindService(supplementalProcess.serviceConnection);
+            mContext.unbindService(supplementalProcess.getServiceConnection());
             mUserSupplementalProcessConnections.remove(callingUser);
             Log.i(TAG, "Supplemental process has been unbound");
         }
     }
 
     @Override
-    public boolean isServiceBound(int appUid) {
+    @Nullable
+    public ISupplementalProcessService getBoundServiceForApp(int appUid) {
         final UserHandle callingUser = UserHandle.getUserHandleForUid(appUid);
         synchronized (mLock) {
-            return (mUserSupplementalProcessConnections.containsKey(callingUser));
+            if (mUserSupplementalProcessConnections.containsKey(callingUser)) {
+                return Objects.requireNonNull(mUserSupplementalProcessConnections.get(callingUser))
+                        .getSupplementalProcessService();
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void registerServiceForApp(int appUid, ISupplementalProcessService service) {
+        final UserHandle callingUser = UserHandle.getUserHandleForUid(appUid);
+        synchronized (mLock) {
+            if (mUserSupplementalProcessConnections.containsKey(callingUser)) {
+                Objects.requireNonNull(mUserSupplementalProcessConnections.get(callingUser))
+                        .setSupplementalProcessService(service);
+            }
         }
     }
 
@@ -215,12 +202,30 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
     }
 
     private static class SupplementalProcessConnection {
-        public ServiceConnection serviceConnection = null;
-        public ISupplementalProcessService supplementalProcessService = null;
+        private final ServiceConnection mServiceConnection;
         private final ArraySet<Integer> mHostingApps = new ArraySet<>();
+        @Nullable
+        private ISupplementalProcessService mSupplementalProcessService = null;
+
+        SupplementalProcessConnection(ServiceConnection serviceConnection) {
+            mServiceConnection = serviceConnection;
+        }
+
+        @Nullable
+        public ISupplementalProcessService getSupplementalProcessService() {
+            return mSupplementalProcessService;
+        }
+
+        public ServiceConnection getServiceConnection() {
+            return mServiceConnection;
+        }
+
+        public void setSupplementalProcessService(ISupplementalProcessService service) {
+            mSupplementalProcessService = service;
+        }
 
         boolean isConnected() {
-            return serviceConnection != null && supplementalProcessService != null;
+            return mSupplementalProcessService != null;
         }
 
         public void addApp(int appid) {

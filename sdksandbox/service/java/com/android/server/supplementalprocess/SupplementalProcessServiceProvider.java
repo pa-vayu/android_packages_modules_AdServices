@@ -16,6 +16,9 @@
 
 package com.android.server.supplementalprocess;
 
+import android.annotation.Nullable;
+import android.content.ServiceConnection;
+
 import com.android.supplemental.process.ISupplementalProcessService;
 
 import java.io.PrintWriter;
@@ -25,20 +28,29 @@ import java.io.PrintWriter;
  */
 public interface SupplementalProcessServiceProvider {
     /**
-     * Initiate a connection with SupplementalProcessService and register the app to it
-     *
-     * <p>Return SupplementalProcessService connected for {@code callingUid} or null on error.
+     * Establish a connection with SupplementalProcessService and register the app to it
+     * @param appUid is the calling app Uid.
+     * @param serviceConnection is the serviceConnection which is going to be used to establish
+     *                          the connection with SupplementalProcessService, then
+     *                          ManagerService can keep updated about connection status.
      */
-    ISupplementalProcessService bindService(int appUid);
+    void bindService(int appUid, ServiceConnection serviceConnection);
 
     /** Unregister the app from its corresponding SupplementalProcessService and unbinding
      * the service if there is no other apps registered to it.
      */
     void unbindService(int appUid);
 
-    /** Check if connection with the supplemental process for the app with given
-     * {@code appUid} is established. */
-    boolean isServiceBound(int appUid);
+    /**
+     * Return bound SupplementalProcessService connected for {@code appUid} or otherwise null.
+    */
+    @Nullable
+    ISupplementalProcessService getBoundServiceForApp(int appUid);
+
+    /**
+     * Register supplemental service for {@code appUid}.
+     */
+    void registerServiceForApp(int appUid, @Nullable ISupplementalProcessService service);
 
     /** Dump debug information for adb shell dumpsys */
     default void dump(PrintWriter writer) {

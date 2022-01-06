@@ -20,14 +20,22 @@ import static android.os.Process.myUid;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 
 import androidx.test.InstrumentationRegistry;
+
+import com.android.supplemental.process.ISupplementalProcessService;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
+
+import java.time.Duration;
 
 /**
  * Unit tests for {@link SupplementalProcessServiceProviderImpl}.
@@ -36,21 +44,38 @@ import org.junit.runners.JUnit4;
 public class SupplementalProcessServiceProviderImplUnitTest {
 
     SupplementalProcessServiceProvider mServiceProvider;
+    Context mContext;
 
     @Before
     public void setup() {
-        Context context = InstrumentationRegistry.getContext();
-        mServiceProvider = new SupplementalProcessServiceProviderImpl(context, new Injector());
+        mContext = Mockito.spy(InstrumentationRegistry.getContext());
+        mServiceProvider = new SupplementalProcessServiceProviderImpl(mContext, new Injector());
     }
 
     @Test
-    public void testSupplementalProcessBinding() throws Exception {
+    public void testSupplementalProcessServiceBinding() throws InterruptedException {
         final int curUid = myUid();
 
         // Supplemental process is loaded on demand, so should not be there initially
-        assertThat(mServiceProvider.isServiceBound(curUid)).isFalse();
-        mServiceProvider.bindService(curUid);
-        assertThat(mServiceProvider.isServiceBound(curUid)).isTrue();
+        assertThat(mServiceProvider.getBoundServiceForApp(curUid)).isNull();
+
+        mServiceProvider.bindService(curUid, new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                mServiceProvider.registerServiceForApp(
+                        curUid, ISupplementalProcessService.Stub.asInterface(service));
+            }
+            @Override
+            public void onServiceDisconnected(ComponentName name) {}
+        });
+
+        Duration timeout = Duration.ofSeconds(1);
+        Duration waitingTime = Duration.ofMillis(100);
+        while (!timeout.isNegative() && mServiceProvider.getBoundServiceForApp(curUid) == null) {
+            Thread.sleep(waitingTime.toMillis());
+            timeout = timeout.minus(waitingTime);
+        }
+        assertThat(mServiceProvider.getBoundServiceForApp(curUid)).isNotNull();
     }
 
     private static class Injector extends SupplementalProcessServiceProviderImpl.Injector {

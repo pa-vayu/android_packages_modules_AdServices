@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import android.content.Context;
+import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.os.Binder;
 import android.os.Bundle;
@@ -32,7 +33,8 @@ import android.supplementalprocess.SupplementalProcessManager;
 import android.util.ArrayMap;
 import android.view.SurfaceControlViewHost;
 
-import androidx.test.InstrumentationRegistry;
+import androidx.annotation.Nullable;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.android.supplemental.process.ISupplementalProcessManagerToSupplementalProcessCallback;
 import com.android.supplemental.process.ISupplementalProcessService;
@@ -62,7 +64,7 @@ public class SupplementalProcessManagerServiceUnitTest {
 
     @Before
     public void setup() {
-        Context context = InstrumentationRegistry.getContext();
+        Context context = InstrumentationRegistry.getInstrumentation().getContext();
         mSupplementalProcessService = new FakeSupplementalProcessService();
         mProvider = new FakeSupplementalProcessProvider(mSupplementalProcessService);
         mService = new SupplementalProcessManagerService(context, mProvider);
@@ -78,7 +80,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     }
 
     @Test
-    public void testLoadCodePackageDoesNotExist() throws Exception {
+    public void testLoadCodePackageDoesNotExist() {
         FakeInitCodeCallback callback = new FakeInitCodeCallback();
         mService.loadCode("does.not.exist", "1", new Bundle(), callback);
 
@@ -146,7 +148,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     }
 
     @Test
-    public void testRequestSurfacePackageCodeNotLoaded() throws Exception {
+    public void testRequestSurfacePackageCodeNotLoaded() {
         // Trying to request package without using proper codeToken should fail
         SecurityException thrown = assertThrows(
                 SecurityException.class,
@@ -222,7 +224,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testSupplementalProcessUnbindingWhenAppDied() throws Exception {
         IRemoteCodeCallback.Stub callback = Mockito.spy(IRemoteCodeCallback.Stub.class);
         int callingUid = Binder.getCallingUid();
-        assertThat(mProvider.isServiceBound(callingUid)).isFalse();
+        assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
 
         mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
 
@@ -231,9 +233,9 @@ public class SupplementalProcessManagerServiceUnitTest {
         Mockito.verify(callback.asBinder(), Mockito.times(1))
                 .linkToDeath(deathRecipient.capture(), Mockito.eq(0));
 
-        assertThat(mProvider.isServiceBound(callingUid)).isTrue();
+        assertThat(mProvider.getBoundServiceForApp(callingUid)).isNotNull();
         deathRecipient.getValue().binderDied();
-        assertThat(mProvider.isServiceBound(callingUid)).isFalse();
+        assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
     }
 
     // ManagerToAppCallback
@@ -291,7 +293,7 @@ public class SupplementalProcessManagerServiceUnitTest {
             }
         }
 
-        boolean isLoadCodeSuccessful() throws InterruptedException {
+        boolean isLoadCodeSuccessful() {
             waitForLatch(mLoadCodeLatch);
             return mLoadCodeSuccess;
         }
@@ -326,7 +328,7 @@ public class SupplementalProcessManagerServiceUnitTest {
             return mCodeToken;
         }
 
-        boolean isRequestSurfacePackageSuccessful() throws InterruptedException {
+        boolean isRequestSurfacePackageSuccessful() {
             waitForLatch(mSurfacePackageLatch);
             return mSurfacePackageSuccess;
         }
@@ -345,20 +347,13 @@ public class SupplementalProcessManagerServiceUnitTest {
         }
 
         @Override
-        public ISupplementalProcessService bindService(int callingUid) {
+        public void bindService(int callingUid, ServiceConnection serviceConnection) {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             if (mService.containsKey(callingUser)) {
-                return mService.get(callingUser);
+                return;
             }
-
             mService.put(callingUser, mSupplementalProcessService);
-            return mService.get(callingUser);
-        }
-
-        @Override
-        public boolean isServiceBound(int callingUid) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            return mService.containsKey(callingUser);
+            serviceConnection.onServiceConnected(null, mSupplementalProcessService.asBinder());
         }
 
         @Override
@@ -366,9 +361,23 @@ public class SupplementalProcessManagerServiceUnitTest {
             final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
             mService.remove(callingUser);
         }
+
+        @Nullable
+        @Override
+        public ISupplementalProcessService getBoundServiceForApp(int callingUid) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
+            return mService.get(callingUser);
+        }
+
+        @Override
+        public void registerServiceForApp(int callingUid,
+                @Nullable ISupplementalProcessService service) {
+            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
+            mService.put(callingUser, service);
+        }
     }
 
-    private static class FakeSupplementalProcessService extends ISupplementalProcessService.Stub {
+    public static class FakeSupplementalProcessService extends ISupplementalProcessService.Stub {
         private ISupplementalProcessToSupplementalProcessManagerCallback mCodeToManagerCallback;
         private final ISupplementalProcessManagerToSupplementalProcessCallback
                 mManagerToCodeCallback;
