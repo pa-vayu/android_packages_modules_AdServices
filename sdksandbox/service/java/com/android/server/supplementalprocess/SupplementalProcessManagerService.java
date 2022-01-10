@@ -26,6 +26,7 @@ import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.SharedLibraryInfo;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
@@ -51,6 +52,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -126,19 +128,20 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         }
     }
 
+    // TODO(b/208631926): Remove the version parameter.
     @Override
     public void loadCode(String name, String version, Bundle params, IRemoteCodeCallback callback) {
         final int callingUid = Binder.getCallingUid();
         final long token = Binder.clearCallingIdentity();
         try {
-            loadCodeWithClearIdentity(callingUid, name, params, callback);
+            loadCodeWithClearIdentity(callingUid, name, version, params, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    private void loadCodeWithClearIdentity(int callingUid, String name, Bundle params,
-            IRemoteCodeCallback callback) {
+    private void loadCodeWithClearIdentity(int callingUid, String name, String version,
+            Bundle params, IRemoteCodeCallback callback) {
         // Step 1: create unique identity for the {callingUid, name} pair
         final IBinder codeToken = mCodeTokenManager.createOrGetCodeToken(callingUid, name);
 
@@ -153,7 +156,8 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             }
         }
         // Step 2: fetch the installed code in device
-        final ApplicationInfo info = getCodeInfo(name);
+        final ApplicationInfo info = getCodeInfo(name, version, callingUid);
+
         if (info == null) {
             String errorMsg = name + " not found for loading";
             Log.w(TAG, errorMsg);
@@ -197,11 +201,35 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         }
     }
 
-    private ApplicationInfo getCodeInfo(String packageName) {
-        // TODO(b/204991850): code info should be version specific too
+    ApplicationInfo getCodeInfo(String sharedLibraryName, String sharedLibraryVersion,
+            int callingUid) {
         try {
-            // TODO(b/204991850): update this when PM provides better API for getting code info
-            return mContext.getPackageManager().getApplicationInfo(packageName, /*flags=*/0);
+            PackageManager pm = mContext.getPackageManager();
+            String[] packageNames = pm.getPackagesForUid(callingUid);
+            for (int i = 0; i < packageNames.length; i++) {
+                ApplicationInfo info = pm.getApplicationInfo(
+                        packageNames[i], PackageManager.GET_SHARED_LIBRARY_FILES);
+                List<SharedLibraryInfo> sharedLibraries = info.getSharedLibraryInfos();
+                for (int j = 0; j < sharedLibraries.size(); j++) {
+                    SharedLibraryInfo sharedLibrary = sharedLibraries.get(j);
+                    if (sharedLibrary.getType() != SharedLibraryInfo.TYPE_SDK_PACKAGE) {
+                        continue;
+                    }
+
+                    if (!sharedLibraryName.equals(sharedLibrary.getName())) {
+                        continue;
+                    }
+
+                    if (!Long.toString(sharedLibrary.getLongVersion()).equals(
+                            sharedLibraryVersion)) {
+                        continue;
+                    }
+
+                    return pm.getApplicationInfo(sharedLibraryName,
+                                PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
+                }
+            }
+            return null;
         } catch (PackageManager.NameNotFoundException ignored) {
             return null;
         }

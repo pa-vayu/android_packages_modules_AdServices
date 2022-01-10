@@ -19,6 +19,8 @@ package {
 android_test_helper_app {
     name: "SupplementalProcessCodeProvider",
     defaults: ["platform_app_defaults"],
+    // TODO(b/215372846): Create our own signing key.
+    certificate: ":cts-keyset-test-b",
     srcs: [
        "src/**/*.java",
        ":framework-supplementalprocess-sources",
