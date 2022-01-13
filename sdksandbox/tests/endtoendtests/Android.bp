@@ -23,7 +23,6 @@ android_test {
         ":framework-supplementalprocess-sources",
     ],
     static_libs: [
-        "service-supplementalprocess",
         "androidx.test.runner",
         "truth-prebuilt",
     ],

@@ -35,6 +35,11 @@ import java.util.Objects;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+/**
+ * Implementation of {@link SupplementalProcessServiceProvider}.
+ *
+ * @hide
+ */
 @ThreadSafe
 class SupplementalProcessServiceProviderImpl implements SupplementalProcessServiceProvider {
 

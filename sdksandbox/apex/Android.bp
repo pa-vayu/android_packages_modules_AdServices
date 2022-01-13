@@ -50,7 +50,7 @@ bootclasspath_fragment {
 
 systemserverclasspath_fragment {
     name: "com.android.supplementalprocess-systemserverclasspath-fragment",
-    standalone_contents: ["service-supplementalprocess"],
+    contents: ["service-supplementalprocess"],
     apex_available: ["com.android.supplementalprocess"],
 }
 
