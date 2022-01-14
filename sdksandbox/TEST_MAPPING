@@ -8,6 +8,9 @@
     },
     {
       "name": "SupplementalProcessInProcessTests"
+    },
+    {
+      "name": "SupplementalProcessManagerTests"
     }
   ]
 }
