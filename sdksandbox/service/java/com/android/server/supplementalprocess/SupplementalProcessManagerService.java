@@ -434,7 +434,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             SupplementalProcessManagerService service =
                     new SupplementalProcessManagerService(getContext(), provider);
             publishBinderService(Context.SUPPLEMENTAL_PROCESS_SERVICE, service);
-            Log.i(TAG, "SupplementalProcessManagerService started!");
         }
     }
 }
