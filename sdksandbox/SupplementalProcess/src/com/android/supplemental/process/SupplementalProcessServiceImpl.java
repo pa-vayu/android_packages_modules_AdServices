@@ -99,7 +99,12 @@ public class SupplementalProcessServiceImpl extends Service {
             IBinder codeToken, ApplicationInfo applicationInfo, String codeProviderClassName,
             Bundle params, ISupplementalProcessToSupplementalProcessManagerCallback callback) {
         enforceCallerIsSystemServer();
-        loadCodeInternal(codeToken, applicationInfo, codeProviderClassName, params, callback);
+        final long token = Binder.clearCallingIdentity();
+        try {
+            loadCodeInternal(codeToken, applicationInfo, codeProviderClassName, params, callback);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 
     @Override
@@ -128,7 +133,6 @@ public class SupplementalProcessServiceImpl extends Service {
                     "Only system_server is allowed to call this API, actual calling uid is "
                             + mInjector.getCallingUid());
         }
-        Binder.clearCallingIdentity();
     }
 
     private void loadCodeInternal(@NonNull IBinder codeToken,
