@@ -25,6 +25,8 @@
     <!-- Allows SupplementalProcess to start activities. -->
     <!-- TODO(b/209599396): temporary workaround, remove once proper solution is implemented. -->
     <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
     <application>
         <service android:name=".SupplementalProcessServiceImpl" android:exported="true">
