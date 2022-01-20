@@ -43,6 +43,7 @@ java_sdk_library {
     ],
     impl_library_visibility: [
         "//packages/modules/SupplementalProcess/tests/unittest",
+        "//frameworks/base/services/tests/mockingservicestests",
     ],
     installable: true,
     apex_available: ["com.android.supplementalprocess"],
