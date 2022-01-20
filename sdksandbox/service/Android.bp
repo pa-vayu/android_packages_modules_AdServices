@@ -16,12 +16,22 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-java_library {
-    name: "service-supplementalprocess",
+filegroup {
+    name: "service-supplementalprocess-sources",
     srcs: [
         "java/**/*.java",
-        ":supplementalprocess_aidl"
     ],
+    path: "java",
+    visibility: ["//visibility:private"],
+}
+
+java_sdk_library {
+    name: "service-supplementalprocess",
+    srcs: [
+        ":service-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
+    ],
+    // TODO: do we need to include the whole frameworks/base/core/java?
     aidl: {
         include_dirs: [
             "frameworks/base/core/java", // For android.os.IBinders
@@ -36,6 +46,9 @@ java_library {
     defaults: [
         "framework-system-server-module-defaults",
         "supplementalprocess-java-defaults",
+    ],
+    impl_library_visibility: [
+        "//packages/modules/SupplementalProcess/tests/unittest",
     ],
     installable: true,
     apex_available: ["com.android.supplementalprocess"],

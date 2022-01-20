@@ -25,6 +25,8 @@ import java.io.PrintWriter;
 
 /**
  * Interface to get hold of SupplementalProcessService
+ *
+ * @hide
  */
 public interface SupplementalProcessServiceProvider {
     /**

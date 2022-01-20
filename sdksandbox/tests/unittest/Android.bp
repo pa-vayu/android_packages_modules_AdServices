@@ -23,7 +23,7 @@ android_test {
         ":framework-supplementalprocess-sources",
     ],
     static_libs: [
-        "service-supplementalprocess",
+        "service-supplementalprocess.impl",
         "androidx.test.runner",
         "truth-prebuilt",
         "mockito-target-extended-minus-junit4",
