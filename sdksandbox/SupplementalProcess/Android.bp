@@ -43,11 +43,6 @@ android_app {
         "androidx.annotation_annotation",
         "androidx.core_core",
     ],
-    aidl: {
-        include_dirs: [
-            "frameworks/base/core/java", // For android.os.IBinders
-        ],
-    },
     sdk_version: "system_current",
     min_sdk_version: "Tiramisu",
     updatable: true,

@@ -32,11 +32,6 @@ filegroup {
 java_sdk_library {
     name: "framework-supplementalprocess",
     srcs: [":framework-supplementalprocess-sources"],
-    aidl: {
-        include_dirs: [
-            "frameworks/base/core/java", // For android.os.IBinders
-        ],
-    },
     sdk_version: "module_current",
     defaults: [
         "framework-module-defaults",
