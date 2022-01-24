@@ -73,17 +73,6 @@ public class SupplementalProcessManager {
         }
     }
 
-    /**
-     * Destroys the code that is loaded into supplemental process.
-     */
-    public void destroyCode(int id) {
-        try {
-            mService.destroyCode(id);
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
-        }
-    }
-
     /** Error code to represent that there is no such code */
     public static final int LOAD_CODE_NOT_FOUND = 100;
 

@@ -159,9 +159,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     public void sendData(int id, Bundle params) {}
 
     @Override
-    public void destroyCode(int id) {}
-
-    @Override
     @RequiresPermission(android.Manifest.permission.DUMP)
     protected void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
         mContext.enforceCallingPermission(android.Manifest.permission.DUMP,

@@ -25,5 +25,4 @@ interface ISupplementalProcessManager {
     void loadCode(in String name, in String version, in Bundle params, in IRemoteCodeCallback callback);
     void requestSurfacePackage(in IBinder codeToken, in IBinder hostToken, int displayId, in Bundle params);
     void sendData(int id, in Bundle params);
-    void destroyCode(int id);
 }
