@@ -21,6 +21,7 @@ android_test {
     srcs: [
         "src/**/*.java",
         ":framework-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
     ],
     static_libs: [
         "androidx.test.runner",
