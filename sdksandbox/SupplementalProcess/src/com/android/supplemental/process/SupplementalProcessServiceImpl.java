@@ -208,5 +208,10 @@ public class SupplementalProcessServiceImpl extends Service {
             SupplementalProcessServiceImpl.this.loadCode(
                     codeToken, applicationInfo, codeProviderClassName, params, callback);
         }
+
+        @Override
+        public int getUid() {
+            return Process.myUid();
+        }
     }
 }

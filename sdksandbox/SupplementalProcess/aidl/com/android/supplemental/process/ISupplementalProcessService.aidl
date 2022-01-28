@@ -23,8 +23,10 @@ import android.os.IBinder;
 import com.android.supplemental.process.ISupplementalProcessToSupplementalProcessManagerCallback;
 
 /** @hide */
-oneway interface ISupplementalProcessService {
+interface ISupplementalProcessService {
     void loadCode(IBinder codeToken, in ApplicationInfo info, in String codeProviderClassName,
                   in Bundle params,
                   in ISupplementalProcessToSupplementalProcessManagerCallback callback);
+
+    int getUid();
 }

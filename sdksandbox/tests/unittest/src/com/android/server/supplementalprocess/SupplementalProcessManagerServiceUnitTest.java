@@ -296,6 +296,12 @@ public class SupplementalProcessManagerServiceUnitTest {
             mCodeToManagerCallback = callback;
         }
 
+        @Override
+        public int getUid() throws RemoteException {
+            // Prevents call to killUid in test
+            return -1;
+        }
+
         void sendLoadCodeSuccessful() throws RemoteException {
             mCodeToManagerCallback.onLoadCodeSuccess(new Bundle(), mManagerToCodeCallback);
         }

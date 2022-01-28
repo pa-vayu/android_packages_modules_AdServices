@@ -17,14 +17,20 @@
 package com.android.server.supplementalprocess;
 
 import android.annotation.RequiresPermission;
+import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.RemoteException;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.ISupplementalProcessManager;
@@ -42,6 +48,10 @@ import com.android.supplemental.process.ISupplementalProcessToSupplementalProces
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -56,6 +66,8 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
     private final Context mContext;
     private final CodeTokenManager mCodeTokenManager = new CodeTokenManager();
+    private final ActivityManager mActivityManager;
+    private final Handler mHandler;
 
     private final SupplementalProcessServiceProvider mServiceProvider;
 
@@ -64,10 +76,54 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
     @GuardedBy("mAppAndRemoteCodeLinks")
     private final ArrayMap<IBinder, AppAndRemoteCodeLink> mAppAndRemoteCodeLinks = new ArrayMap();
 
+    @GuardedBy("mAppLoadedCodeUids")
+    private final ArrayMap<Integer, HashSet<Integer>> mAppLoadedCodeUids = new ArrayMap<>();
+
     SupplementalProcessManagerService(Context context,
             SupplementalProcessServiceProvider provider) {
         mContext = context;
         mServiceProvider = provider;
+        mActivityManager = mContext.getSystemService(ActivityManager.class);
+        mHandler = new Handler(Looper.getMainLooper());
+
+        final IntentFilter packageIntentFilter = new IntentFilter();
+        packageIntentFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        packageIntentFilter.addDataScheme("package");
+
+        BroadcastReceiver packageIntentReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final int codeUid = intent.getIntExtra(Intent.EXTRA_UID, -1);
+                if (codeUid == -1) {
+                    return;
+                }
+                final boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
+                if (replacing) {
+                    onCodeUpdating(codeUid);
+                }
+            }
+        };
+        mContext.registerReceiver(packageIntentReceiver, packageIntentFilter,
+                null /* broadcastPermission */, mHandler);
+    }
+
+    private void onCodeUpdating(int codeUid) {
+        final ArrayList<Integer> appUids = new ArrayList<>();
+        synchronized (mAppLoadedCodeUids) {
+            for (Map.Entry<Integer, HashSet<Integer>> appEntry :
+                    mAppLoadedCodeUids.entrySet()) {
+                final int appUid = appEntry.getKey();
+                final HashSet<Integer> loadedCodeUids = appEntry.getValue();
+
+                if (loadedCodeUids.contains(codeUid)) {
+                    appUids.add(appUid);
+                }
+            }
+        }
+        for (Integer appUid : appUids) {
+            Log.i(TAG, "Killing app " + appUid + " containing code " + codeUid);
+            mActivityManager.killUid(appUid, "Package updating");
+        }
     }
 
     @Override
@@ -111,13 +167,34 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         // Register a death recipient to clean up codeToken and unbind its service after app dies.
         try {
             callback.asBinder().linkToDeath(() -> {
-                cleanUp(codeToken);
-                mServiceProvider.unbindService(callingUid);
+                onAppDeath(codeToken, callingUid);
             }, 0);
         } catch (RemoteException re) {
             // App has already died, cleanup code token and link, and unbind its service
-            cleanUp(codeToken);
-            mServiceProvider.unbindService(callingUid);
+            onAppDeath(codeToken, callingUid);
+        }
+    }
+
+    // TODO(b/215012578): replace with official API once running in correct UID range
+    private int getSupplementalProcessUidForApp(int appUid) {
+        try {
+            return mServiceProvider.getBoundServiceForApp(appUid).getUid();
+        } catch (RemoteException ignored) {
+            return -1;
+        }
+    }
+
+    private void onAppDeath(IBinder codeToken, int appUid) {
+        cleanUp(codeToken);
+        final int supplementalProcessUid = getSupplementalProcessUidForApp(appUid);
+        mServiceProvider.unbindService(appUid);
+        synchronized (mAppLoadedCodeUids) {
+            mAppLoadedCodeUids.remove(appUid);
+        }
+        if (supplementalProcessUid != -1) {
+            // TODO(b/216605836): remove explicit kill if it happens automatically
+            Log.i(TAG, "Killing supplemental process " + supplementalProcessUid);
+            mActivityManager.killUid(supplementalProcessUid, "App " + appUid + " has died");
         }
     }
 
@@ -185,7 +262,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
         // check first if service already bound
         ISupplementalProcessService service = mServiceProvider.getBoundServiceForApp(callingUid);
         if (service != null) {
-            loadCodeForService(codeToken, info, params, link, service);
+            loadCodeForService(callingUid, codeToken, info, params, link, service);
             return;
         }
 
@@ -203,7 +280,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
 
                         // Ensuring the code is not loaded again if connection restarted
                         if (!mIsServiceBound) {
-                            loadCodeForService(codeToken, info, params, link, mService);
+                            loadCodeForService(callingUid, codeToken, info, params, link, mService);
                             mIsServiceBound = true;
                         }
                     }
@@ -231,15 +308,16 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                     }
                 }
         );
-
     }
 
     private void loadCodeForService(
-             IBinder codeToken, ApplicationInfo info, Bundle params,
+            int callingUid, IBinder codeToken, ApplicationInfo info, Bundle params,
             AppAndRemoteCodeLink link, ISupplementalProcessService service) {
         try {
             // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
             service.loadCode(codeToken, info, "", params, link);
+
+            onCodeLoaded(callingUid, info.uid);
         } catch (RemoteException e) {
             String errorMsg = "Failed to load code";
             Log.w(TAG, errorMsg, e);
@@ -247,6 +325,18 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                     SupplementalProcessManager.LOAD_CODE_INTERNAL_ERROR, errorMsg);
         }
     }
+
+    private void onCodeLoaded(int appUid, int codeUid) {
+        synchronized (mAppLoadedCodeUids) {
+            final HashSet<Integer> codeUids = mAppLoadedCodeUids.get(appUid);
+            if (codeUids != null) {
+                codeUids.add(codeUid);
+            } else {
+                mAppLoadedCodeUids.put(appUid, new HashSet<>(Collections.singletonList(codeUid)));
+            }
+        }
+    }
+
     /**
      * Clean up all internal data structures related to {@code codeToken}
      */
