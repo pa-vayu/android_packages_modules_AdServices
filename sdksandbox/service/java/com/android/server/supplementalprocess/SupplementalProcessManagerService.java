@@ -192,7 +192,6 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
             mAppLoadedCodeUids.remove(appUid);
         }
         if (supplementalProcessUid != -1) {
-            // TODO(b/216605836): remove explicit kill if it happens automatically
             Log.i(TAG, "Killing supplemental process " + supplementalProcessUid);
             mActivityManager.killUid(supplementalProcessUid, "App " + appUid + " has died");
         }
