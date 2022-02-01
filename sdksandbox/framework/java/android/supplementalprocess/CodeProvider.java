@@ -30,18 +30,12 @@ import java.util.concurrent.Executor;
  */
 public abstract class CodeProvider {
 
-    private final Context mCodeContext;
-
-    public CodeProvider(
-            @NonNull Context codeContext) {
-        mCodeContext = codeContext;
-    }
-
     /**
      * Initializes code.
      */
     public abstract void initCode(
-            @NonNull Bundle params, @NonNull Executor executor, @NonNull InitCodeCallback callback);
+            @NonNull CodeContext codeContext, @NonNull Bundle params,
+            @NonNull Executor executor, @NonNull InitCodeCallback callback);
 
     /**
      * Returns view that will be used for remote rendering.

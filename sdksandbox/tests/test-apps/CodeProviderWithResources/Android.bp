@@ -16,27 +16,20 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-android_test {
-    name: "SupplementalProcessManagerTests",
+android_test_helper_app {
+    name: "CodeProviderWithResources",
+    defaults: ["platform_app_defaults"],
+    certificate: ":cts-keyset-test-b",
     srcs: [
-        "src/**/*.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
+       "src/**/*.java",
+       ":framework-supplementalprocess-sources",
     ],
-    static_libs: [
-        "androidx.test.runner",
-        "truth-prebuilt",
-    ],
-    libs: [
-        "android.test.base",
-        "android.test.mock",
-        "android.test.runner",
-    ],
-    data: [
-      ":SupplementalProcessCodeProvider",
-      ":CodeProviderWithResources",
-    ],
-    min_sdk_version: "Tiramisu",
-    target_sdk_version: "current",
+    resource_dirs: ["res"],
+    platform_apis: true,
+    compile_dex: true,
+    dex_preopt: {
+        enabled: true,
+    },
     test_suites: ["general-tests"],
 }
+

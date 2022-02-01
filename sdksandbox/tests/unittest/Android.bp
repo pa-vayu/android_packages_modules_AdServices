@@ -41,7 +41,8 @@ android_test {
     ],
     data: [
       ":SampleCodeProviderApp",
-      ":SampleServiceApp"
+      ":SampleServiceApp",
+      ":CodeProviderWithResources",
     ],
     min_sdk_version: "Tiramisu",
     target_sdk_version: "current",

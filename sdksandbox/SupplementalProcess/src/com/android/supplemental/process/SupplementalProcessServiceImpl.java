@@ -26,6 +26,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.RemoteException;
+import android.supplementalprocess.CodeContext;
 import android.util.ArrayMap;
 import android.util.Log;
 
@@ -158,12 +159,14 @@ public class SupplementalProcessServiceImpl extends Service {
             ClassLoader loader = getClassLoader(applicationInfo);
             Class<?> clz = Class.forName(CodeHolder.class.getName(), true, loader);
             CodeHolder codeHolder = (CodeHolder) clz.getDeclaredConstructor().newInstance();
+            CodeContext codeContext = new CodeContext(mInjector.getContext(), applicationInfo);
             codeHolder.init(
                     mInjector.getContext(),
                     params,
                     callback,
                     codeProviderClassName,
-                    loader);
+                    loader,
+                    codeContext);
             synchronized (mHeldCode) {
                 mHeldCode.put(codeToken, codeHolder);
             }

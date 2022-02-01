@@ -23,6 +23,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
+import android.supplementalprocess.CodeContext;
 import android.supplementalprocess.CodeProvider;
 import android.view.View;
 import android.widget.Toast;
@@ -32,18 +33,18 @@ import java.util.concurrent.Executor;
 
 public class SampleCodeProvider extends CodeProvider {
 
-    public SampleCodeProvider(Context codeContext) {
-        super(codeContext);
-    }
+    private CodeContext mContext;
 
     @Override
-    public void initCode(Bundle params, Executor executor, InitCodeCallback callback) {
+    public void initCode(CodeContext context, Bundle params,
+            Executor executor, InitCodeCallback callback) {
+        mContext = context;
         callback.onInitCodeFinished(null);
     }
 
     @Override
     public View getView(Context windowContext, Bundle params) {
-        return new TestView(windowContext);
+        return new TestView(windowContext, mContext);
     }
 
     @Override
@@ -52,8 +53,11 @@ public class SampleCodeProvider extends CodeProvider {
 
     private static class TestView extends View {
 
-        TestView(Context context) {
+        private CodeContext mCodeContext;
+
+        TestView(Context context, CodeContext codeContext) {
             super(context);
+            mCodeContext = codeContext;
         }
 
         @Override
@@ -65,9 +69,10 @@ public class SampleCodeProvider extends CodeProvider {
             paint.setColor(Color.WHITE);
             paint.setTextSize(50);
             Random random = new Random();
+            String message = mCodeContext.getResources().getString(R.string.view_message);
             int c = Color.rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256));
             canvas.drawColor(c);
-            canvas.drawText("Rendered view", 75, 75, paint);
+            canvas.drawText(message, 75, 75, paint);
 
             setOnClickListener(this::onClickListener);
         }

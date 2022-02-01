@@ -22,6 +22,7 @@
     <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
         <option name="cleanup-apks" value="true"/>
         <option name="test-file-name" value="SupplementalProcessCodeProvider.apk"/>
+        <option name="test-file-name" value="CodeProviderWithResources.apk"/>
         <option name="test-file-name" value="SupplementalProcessManagerTests.apk"/>
     </target_preparer>
   <!--

@@ -24,10 +24,14 @@ import android.Manifest;
 import android.content.Context;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.supplementalprocess.CodeContext;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
 import android.supplementalprocess.testutils.FakeRemoteCodeCallback;
@@ -46,7 +50,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
+import java.io.BufferedReader;
 import java.io.FileDescriptor;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
@@ -59,13 +65,15 @@ public class SupplementalProcessManagerServiceUnitTest {
     private FakeSupplementalProcessService mSupplementalProcessService;
     private FakeSupplementalProcessProvider mProvider;
     private static final String CODE_PROVIDER_PACKAGE = "com.android.codeprovider";
+    private static final String CODE_PROVIDER_RESOURCES_PACKAGE =
+            "com.android.codeproviderresources";
 
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
         // Required to access <sdk-library> information.
         InstrumentationRegistry.getInstrumentation().getUiAutomation().adoptShellPermissionIdentity(
-                Manifest.permission.ACCESS_SHARED_LIBRARIES);
+                Manifest.permission.ACCESS_SHARED_LIBRARIES, Manifest.permission.INSTALL_PACKAGES);
         mSupplementalProcessService = new FakeSupplementalProcessService();
         mProvider = new FakeSupplementalProcessProvider(mSupplementalProcessService);
         mService = new SupplementalProcessManagerService(context, mProvider);
@@ -248,6 +256,33 @@ public class SupplementalProcessManagerServiceUnitTest {
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNotNull();
         deathRecipient.getValue().binderDied();
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
+    }
+
+    /* Tests resources defined in CodeProviderWithResources may be read. */
+    @Test
+    public void testCodeContextResourcesAndAssets() throws Exception {
+        Context context = InstrumentationRegistry.getInstrumentation().getContext();
+        PackageManager pm = context.getPackageManager();
+        ApplicationInfo info = pm.getApplicationInfo(CODE_PROVIDER_RESOURCES_PACKAGE,
+                PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
+        assertThat(info).isNotNull();
+        CodeContext codeContext = new CodeContext(context, info);
+        Resources resources = codeContext.getResources();
+
+        int integerId = resources.getIdentifier("test_integer", "integer",
+                CODE_PROVIDER_RESOURCES_PACKAGE);
+        assertThat(integerId).isNotEqualTo(0);
+        assertThat(resources.getInteger(integerId)).isEqualTo(1234);
+
+        int stringId  = resources.getIdentifier("test_string", "string",
+                CODE_PROVIDER_RESOURCES_PACKAGE);
+        assertThat(stringId).isNotEqualTo(0);
+        assertThat(resources.getString(stringId)).isEqualTo("Test String");
+
+        AssetManager assetManager = resources.getAssets();
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(assetManager.open("test-asset.txt")));
+        assertThat(reader.readLine()).isEqualTo("This is a test asset");
     }
 
     /**

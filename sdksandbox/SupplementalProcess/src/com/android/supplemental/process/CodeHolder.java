@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.RemoteException;
+import android.supplementalprocess.CodeContext;
 import android.supplementalprocess.CodeProvider;
 import android.util.Log;
 import android.util.SparseArray;
@@ -55,7 +56,7 @@ class CodeHolder {
 
     void init(Context context, Bundle params,
             ISupplementalProcessToSupplementalProcessManagerCallback callback,
-            String codeProviderClassName, ClassLoader loader) {
+            String codeProviderClassName, ClassLoader loader, CodeContext codeContext) {
         if (mInitialized) {
             throw new IllegalStateException("Already initialized!");
         }
@@ -65,8 +66,9 @@ class CodeHolder {
         mDisplayManager = mContext.getSystemService(DisplayManager.class);
         try {
             Class<?> clz = Class.forName(codeProviderClassName, true, loader);
-            mCode = (CodeProvider) clz.getConstructor(Context.class).newInstance(mContext);
-            mCode.initCode(params, mContext.getMainExecutor(), new CodeProvider.InitCodeCallback() {
+            mCode = (CodeProvider) clz.getConstructor().newInstance();
+            mCode.initCode(codeContext, params, mContext.getMainExecutor(),
+                    new CodeProvider.InitCodeCallback() {
                 @Override
                 public void onInitCodeFinished(Bundle extraParams) {
                     sendLoadCodeSuccess();

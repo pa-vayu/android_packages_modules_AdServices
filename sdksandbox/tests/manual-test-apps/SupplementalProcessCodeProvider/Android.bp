@@ -25,5 +25,6 @@ android_test_helper_app {
        "src/**/*.java",
        ":framework-supplementalprocess-sources",
     ],
+    resource_dirs: ["res"],
     platform_apis: true,
 }

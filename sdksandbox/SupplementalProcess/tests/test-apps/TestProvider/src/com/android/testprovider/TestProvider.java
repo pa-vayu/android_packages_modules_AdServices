@@ -18,6 +18,7 @@ package com.android.testprovider;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.supplementalprocess.CodeContext;
 import android.supplementalprocess.CodeProvider;
 import android.view.View;
 
@@ -25,12 +26,9 @@ import java.util.concurrent.Executor;
 
 public class TestProvider extends CodeProvider {
 
-    public TestProvider(Context context) {
-        super(context);
-    }
-
     @Override
-    public void initCode(Bundle params, Executor executor, InitCodeCallback callback) {
+    public void initCode(CodeContext context, Bundle params, Executor executor,
+            InitCodeCallback callback) {
         callback.onInitCodeFinished(params);
     }
 

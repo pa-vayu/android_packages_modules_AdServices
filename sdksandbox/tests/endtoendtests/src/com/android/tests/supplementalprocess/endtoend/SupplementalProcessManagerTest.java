@@ -108,12 +108,24 @@ public class SupplementalProcessManagerTest {
         assertThat(sCallback.isRequestSurfacePackageSuccessful()).isTrue();
     }
 
+    @Test
+    public void testResourcesAndAssets() {
+        Bundle params = new Bundle();
+        params.putString(CODE_PROVIDER_KEY,
+                "com.android.codeproviderresources.ResourceCodeProvider");
+        FakeInitCodeCallback callback = new FakeInitCodeCallback();
+        sSupplementalProcessManager.loadCode("com.android.codeproviderresources", "1",
+                params, callback);
+        assertThat(callback.getErrorMessage()).isNull();
+    }
+
     private static class FakeInitCodeCallback extends IRemoteCodeCallback.Stub {
         private final CountDownLatch mLoadCodeLatch = new CountDownLatch(1);
         private final CountDownLatch mSurfacePackageLatch = new CountDownLatch(1);
 
         private boolean mLoadCodeSuccess;
         private boolean mSurfacePackageSuccess;
+        private String mErrorMsg;
 
         private int mErrorCode;
 
@@ -130,6 +142,7 @@ public class SupplementalProcessManagerTest {
         public void onLoadCodeFailure(int errorCode, String errorMsg) {
             mLoadCodeSuccess = false;
             mErrorCode = errorCode;
+            mErrorMsg = errorMsg;
             mLoadCodeLatch.countDown();
         }
 
@@ -173,6 +186,11 @@ public class SupplementalProcessManagerTest {
             waitForLatch(mLoadCodeLatch);
             assertThat(mLoadCodeSuccess).isFalse();
             return mErrorCode;
+        }
+
+        String getErrorMessage() {
+            waitForLatch(mLoadCodeLatch);
+            return mErrorMsg;
         }
 
         IBinder getCodeToken() {
