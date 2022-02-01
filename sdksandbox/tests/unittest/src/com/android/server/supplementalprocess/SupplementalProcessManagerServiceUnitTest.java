@@ -27,7 +27,6 @@ import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
-import android.os.UserHandle;
 import android.supplementalprocess.IRemoteCodeCallback;
 import android.supplementalprocess.SupplementalProcessManager;
 import android.supplementalprocess.testutils.FakeRemoteCodeCallback;
@@ -242,7 +241,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     private static class FakeSupplementalProcessProvider
             implements SupplementalProcessServiceProvider {
         private final ISupplementalProcessService mSupplementalProcessService;
-        private final ArrayMap<UserHandle, ISupplementalProcessService> mService = new ArrayMap<>();
+        private final ArrayMap<Integer, ISupplementalProcessService> mService = new ArrayMap<>();
 
         FakeSupplementalProcessProvider(ISupplementalProcessService service) {
             mSupplementalProcessService = service;
@@ -250,32 +249,28 @@ public class SupplementalProcessManagerServiceUnitTest {
 
         @Override
         public void bindService(int callingUid, ServiceConnection serviceConnection) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            if (mService.containsKey(callingUser)) {
+            if (mService.containsKey(callingUid)) {
                 return;
             }
-            mService.put(callingUser, mSupplementalProcessService);
+            mService.put(callingUid, mSupplementalProcessService);
             serviceConnection.onServiceConnected(null, mSupplementalProcessService.asBinder());
         }
 
         @Override
         public void unbindService(int callingUid) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            mService.remove(callingUser);
+            mService.remove(callingUid);
         }
 
         @Nullable
         @Override
         public ISupplementalProcessService getBoundServiceForApp(int callingUid) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            return mService.get(callingUser);
+            return mService.get(callingUid);
         }
 
         @Override
-        public void registerServiceForApp(int callingUid,
+        public void setBoundServiceForApp(int callingUid,
                 @Nullable ISupplementalProcessService service) {
-            final UserHandle callingUser = UserHandle.getUserHandleForUid(callingUid);
-            mService.put(callingUser, service);
+            mService.put(callingUid, service);
         }
     }
 

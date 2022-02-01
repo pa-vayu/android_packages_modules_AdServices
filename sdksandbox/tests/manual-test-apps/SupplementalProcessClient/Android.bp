@@ -21,7 +21,7 @@ android_app {
     defaults: ["platform_app_defaults"],
     platform_apis: true,
     srcs: [
-        "src/**/*.java",
+        "src/**/supplementalprocessclient/*.java",
         ":framework-supplementalprocess-sources",
         ":supplementalprocess_aidl",
         ":supplementalprocess-sources",
@@ -33,5 +33,25 @@ android_app {
     resource_dirs: [
         "res",
     ],
-    manifest: "AndroidManifest.xml",
+    manifest: "AndroidManifest_Client1.xml",
+}
+
+android_app {
+    name: "SupplementalProcessClientTwo",
+    defaults: ["platform_app_defaults"],
+    platform_apis: true,
+    srcs: [
+        "src/**/supplementalprocessclienttwo/*.java",
+        ":framework-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
+        ":supplementalprocess-sources",
+    ],
+    static_libs: [
+        "androidx.annotation_annotation",
+        "androidx.core_core",
+    ],
+    resource_dirs: [
+        "res",
+    ],
+    manifest: "AndroidManifest_Client2.xml",
 }

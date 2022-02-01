@@ -30,7 +30,7 @@ import java.io.PrintWriter;
  */
 public interface SupplementalProcessServiceProvider {
     /**
-     * Establish a connection with SupplementalProcessService and register the app to it
+     * Bind to and establish a connection with SupplementalProcessService.
      * @param appUid is the calling app Uid.
      * @param serviceConnection is the serviceConnection which is going to be used to establish
      *                          the connection with SupplementalProcessService, then
@@ -38,8 +38,8 @@ public interface SupplementalProcessServiceProvider {
      */
     void bindService(int appUid, ServiceConnection serviceConnection);
 
-    /** Unregister the app from its corresponding SupplementalProcessService and unbinding
-     * the service if there is no other apps registered to it.
+    /**
+     * Unbind the SupplementalProcessService associated with the app.
      */
     void unbindService(int appUid);
 
@@ -50,9 +50,9 @@ public interface SupplementalProcessServiceProvider {
     ISupplementalProcessService getBoundServiceForApp(int appUid);
 
     /**
-     * Register supplemental service for {@code appUid}.
+     * Set bound supplemental service for {@code appUid}.
      */
-    void registerServiceForApp(int appUid, @Nullable ISupplementalProcessService service);
+    void setBoundServiceForApp(int appUid, @Nullable ISupplementalProcessService service);
 
     /** Dump debug information for adb shell dumpsys */
     default void dump(PrintWriter writer) {
