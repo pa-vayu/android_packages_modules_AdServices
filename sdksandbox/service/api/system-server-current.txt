@@ -1,1 +1,9 @@
 // Signature format: 2.0
+package com.android.server.supplementalprocess {
+
+  public interface SupplementalProcessManagerLocal {
+    field public static final String SERVICE_INTERFACE = "com.android.supplemental.process.SupplementalProcessService";
+  }
+
+}
+
