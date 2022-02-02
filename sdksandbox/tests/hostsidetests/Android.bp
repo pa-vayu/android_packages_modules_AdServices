@@ -35,6 +35,20 @@ java_test_host {
     ],
 }
 
+java_test_host {
+    name: "SupplementalProcessLifecycleHostTest",
+    srcs: ["src/**/SupplementalProcessLifecycleHostTest.java"],
+    test_config: "SupplementalProcessLifecycleHostTest.xml",
+    libs: ["tradefed"],
+    test_suites: ["general-tests"],
+    data: [
+        ":TestCodeProvider",
+        ":TestCodeProvider2",
+        ":SupplementalProcessTestApp",
+        ":SupplementalProcessTestApp2",
+    ],
+}
+
 android_test_helper_app {
     name: "SupplementalProcessStorageTestApp",
     manifest: "app/SupplementalProcessStorageTestAppManifest.xml",
@@ -53,3 +67,62 @@ android_test_helper_app {
     platform_apis: true,
 }
 
+android_test_helper_app {
+    name: "SupplementalProcessTestApp",
+    manifest: "app/SupplementalProcessTestAppManifest.xml",
+    defaults: ["platform_app_defaults"],
+    platform_apis: true,
+    srcs: [
+        "app/src/**/SupplementalProcessTestActivity.java",
+        ":framework-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
+        ":supplementalprocess-sources",
+    ],
+    static_libs: [
+        "androidx.core_core",
+        "SupplementalProcessTestUtils",
+    ],
+}
+
+android_test_helper_app {
+    name: "SupplementalProcessTestApp2",
+    manifest: "app/SupplementalProcessTestApp2Manifest.xml",
+    defaults: ["platform_app_defaults"],
+    platform_apis: true,
+    srcs: [
+        "app/src/**/SupplementalProcessTestActivity2.java",
+        ":framework-supplementalprocess-sources",
+        ":supplementalprocess_aidl",
+        ":supplementalprocess-sources",
+    ],
+    static_libs: [
+        "androidx.core_core",
+        "SupplementalProcessTestUtils",
+    ],
+}
+
+android_test_helper_app {
+    name: "TestCodeProvider",
+    manifest: "codeprovider/TestCodeProviderManifest.xml",
+    defaults: ["platform_app_defaults"],
+    // TODO(b/215372846): Create our own signing key.
+    certificate: ":cts-keyset-test-b",
+    srcs: [
+       "codeprovider/src/**/TestCodeProvider.java",
+       ":framework-supplementalprocess-sources",
+    ],
+    platform_apis: true,
+}
+
+android_test_helper_app {
+    name: "TestCodeProvider2",
+    manifest: "codeprovider/TestCodeProvider2Manifest.xml",
+    // TODO(b/215372846): Create our own signing key.
+    certificate: ":cts-keyset-test-b",
+    defaults: ["platform_app_defaults"],
+    srcs: [
+       "codeprovider/src/**/TestCodeProvider2.java",
+       ":framework-supplementalprocess-sources",
+    ],
+    platform_apis: true,
+}
