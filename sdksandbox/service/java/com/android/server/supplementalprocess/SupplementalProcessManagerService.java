@@ -16,6 +16,8 @@
 
 package com.android.server.supplementalprocess;
 
+import static android.supplementalprocess.SupplementalProcessManager.SUPPLEMENTAL_PROCESS_SERVICE;
+
 import android.annotation.RequiresPermission;
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;
@@ -519,7 +521,7 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                     new SupplementalProcessServiceProviderImpl(getContext());
             SupplementalProcessManagerService service =
                     new SupplementalProcessManagerService(getContext(), provider);
-            publishBinderService(Context.SUPPLEMENTAL_PROCESS_SERVICE, service);
+            publishBinderService(SUPPLEMENTAL_PROCESS_SERVICE, service);
         }
     }
 }

@@ -16,6 +16,8 @@
 
 package android.supplementalprocess;
 
+import static android.supplementalprocess.SupplementalProcessManager.SUPPLEMENTAL_PROCESS_SERVICE;
+
 import android.annotation.SystemService;
 import android.content.Context;
 import android.os.Bundle;
@@ -27,9 +29,11 @@ import android.os.RemoteException;
  *
  * @hide
  */
-@SystemService(Context.SUPPLEMENTAL_PROCESS_SERVICE)
+@SystemService(SUPPLEMENTAL_PROCESS_SERVICE)
 public class SupplementalProcessManager {
     private static final String TAG = "SupplementalProcessManager";
+
+    public static final String SUPPLEMENTAL_PROCESS_SERVICE = "supplemental_process";
 
     private final ISupplementalProcessManager mService;
     private final Context mContext;

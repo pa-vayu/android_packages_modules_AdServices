@@ -16,6 +16,8 @@
 
 package android.supplementalprocess;
 
+import static android.supplementalprocess.SupplementalProcessManager.SUPPLEMENTAL_PROCESS_SERVICE;
+
 import android.annotation.SystemApi;
 import android.app.SystemServiceRegistry;
 import android.content.Context;
@@ -39,7 +41,7 @@ public class SupplementalProcessFrameworkInitializer {
      */
     public static void registerServiceWrappers() {
         SystemServiceRegistry.registerContextAwareService(
-                Context.SUPPLEMENTAL_PROCESS_SERVICE, SupplementalProcessManager.class,
+                SUPPLEMENTAL_PROCESS_SERVICE, SupplementalProcessManager.class,
                 (context, service) -> new SupplementalProcessManager(
                         context, ISupplementalProcessManager.Stub.asInterface(service))
         );
