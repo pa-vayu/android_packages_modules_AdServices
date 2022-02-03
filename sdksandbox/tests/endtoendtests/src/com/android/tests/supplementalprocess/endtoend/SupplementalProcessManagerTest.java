@@ -62,7 +62,7 @@ public class SupplementalProcessManagerTest {
     }
 
     @Test
-    public void loadCodeFailureAlreadyLoaded() throws Exception {
+    public void loadCodeFailureAlreadyLoaded() {
         Bundle params = new Bundle();
         params.putString(CODE_PROVIDER_KEY,
                 "com.android.supplementalprocesscode.SampleCodeProvider");
@@ -74,19 +74,19 @@ public class SupplementalProcessManagerTest {
     }
 
     @Test
-    public void loadCodeFailureNotFound() throws Exception {
+    public void loadCodeFailureNotFound() {
         Bundle params = new Bundle();
         params.putString(CODE_PROVIDER_KEY,
                 "com.android.supplementalprocesscode.SampleCodeProvider");
         FakeInitCodeCallback cb = new FakeInitCodeCallback();
         sSupplementalProcessManager.loadCode(
-                null, "1", params, cb);
+                "nonexistent.shared.lib", "1", params, cb);
         assertThat(cb.getLoadCodeErrorCode())
                 .isEqualTo(SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
     }
 
     @Test
-    public void loadCodeFailureInitError() throws Exception {
+    public void loadCodeFailureInitError() {
         Bundle params = new Bundle();
         params.putString(CODE_PROVIDER_KEY,
                 "invalid");

@@ -18,6 +18,8 @@ package {
 
 android_test_helper_app {
     name: "SampleCodeProviderApp",
+    // TODO(b/215372846): Create specific signing keys for SupplementalProcess tests.
+    certificate: ":cts-keyset-test-b",
     defaults: ["platform_app_defaults"],
     manifest: "AndroidManifest.xml",
     sdk_version: "current",

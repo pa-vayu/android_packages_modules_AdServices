@@ -19,5 +19,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.android.codeprovider" >
 
-    <application android:hasCode="false"> </application>
+    <application>
+        android:hasCode="false"
+        <sdk-library android:name="com.android.codeprovider" android:versionMajor="1" />
+    </application>
 </manifest>

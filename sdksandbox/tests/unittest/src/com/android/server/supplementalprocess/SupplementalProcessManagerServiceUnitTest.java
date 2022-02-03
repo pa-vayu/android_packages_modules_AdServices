@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
@@ -62,6 +63,9 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
+        // Required to access <sdk-library> information.
+        InstrumentationRegistry.getInstrumentation().getUiAutomation().adoptShellPermissionIdentity(
+                Manifest.permission.ACCESS_SHARED_LIBRARIES);
         mSupplementalProcessService = new FakeSupplementalProcessService();
         mProvider = new FakeSupplementalProcessProvider(mSupplementalProcessService);
         mService = new SupplementalProcessManagerService(context, mProvider);
@@ -70,10 +74,21 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test
     public void testLoadCodeIsSuccessful() throws Exception {
         FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
         // Assume SupplementalProcess loads successfully
         mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
+    }
+
+    @Test
+    public void testLoadCodeWrongVersion() throws Exception {
+        FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "2", new Bundle(), callback);
+
+        // Verify loading failed
+        assertThat(callback.isLoadCodeSuccessful()).isFalse();
+        assertThat(callback.getLoadCodeErrorCode())
+                .isEqualTo(SupplementalProcessManager.LOAD_CODE_NOT_FOUND);
     }
 
     @Test
@@ -91,7 +106,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test
     public void testLoadCode_errorFromSupplementalProcess() throws Exception {
         FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
         mSupplementalProcessService.sendLoadCodeError();
 
         // Verify loading failed
@@ -105,7 +120,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         // Load it once
         {
             FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
             // Assume SupplementalProcess loads successfully
             mSupplementalProcessService.sendLoadCodeSuccessful();
             assertThat(callback.isLoadCodeSuccessful()).isTrue();
@@ -114,7 +129,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         // Load it again
         {
             FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
             // Verify loading failed
             assertThat(callback.isLoadCodeSuccessful()).isFalse();
             assertThat(callback.getLoadCodeErrorCode()).isEqualTo(
@@ -128,7 +143,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         // Load code, but make it fail
         {
             FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
             // Assume SupplementalProcess load fails
             mSupplementalProcessService.sendLoadCodeError();
             assertThat(callback.isLoadCodeSuccessful()).isFalse();
@@ -137,7 +152,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         // Caller should be able to retry loading the code
         {
             FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-            mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+            mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
             // Assume SupplementalProcess loads successfully
             mSupplementalProcessService.sendLoadCodeSuccessful();
             assertThat(callback.isLoadCodeSuccessful()).isTrue();
@@ -159,7 +174,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     public void testRequestSurfacePackage() throws Exception {
         // 1. We first need to collect a proper codeToken by calling loadCode
         FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
         mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
 
@@ -181,7 +196,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
                 .forClass(IBinder.DeathRecipient.class);
 
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
         mSupplementalProcessService.sendLoadCodeSuccessful();
         assertThat(callback.isLoadCodeSuccessful()).isTrue();
 
@@ -203,7 +218,7 @@ public class SupplementalProcessManagerServiceUnitTest {
     @Test
     public void testSurfacePackageError() throws Exception {
         FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
         // Assume SurfacePackage encounters an error.
         mSupplementalProcessService.sendSurfacePackageError(
                 SupplementalProcessManager.SURFACE_PACKAGE_INTERNAL_ERROR, "bad surface");
@@ -223,7 +238,7 @@ public class SupplementalProcessManagerServiceUnitTest {
         int callingUid = Binder.getCallingUid();
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
 
-        mService.loadCode(CODE_PROVIDER_PACKAGE, "123", new Bundle(), callback);
+        mService.loadCode(CODE_PROVIDER_PACKAGE, "1", new Bundle(), callback);
 
         ArgumentCaptor<IBinder.DeathRecipient> deathRecipient = ArgumentCaptor
                 .forClass(IBinder.DeathRecipient.class);
