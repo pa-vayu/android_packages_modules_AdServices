@@ -14,18 +14,11 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.android.tests.supplementalprocess" >
+          package="com.android.tests.codeprovider.storagetest">
 
-    <application>
-        <uses-library android:name="android.test.runner" />
-        <uses-sdk-library android:name="com.android.tests.codeprovider.storagetest"
-                android:versionMajor="1" android:certDigest="" />
+    <application hasCode="false">
+        <sdk-library android:name="com.android.tests.codeprovider.storagetest"
+            android:versionMajor="1" />
     </application>
-
-    <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-                     android:targetPackage="com.android.tests.supplementalprocess"
-                     android:label="SupplementalProcessStorageTestApp"/>
-
 </manifest>

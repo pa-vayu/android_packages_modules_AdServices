@@ -28,7 +28,7 @@ java_test_host {
     ],
     test_suites: ["general-tests"],
     data: [
-        ":SupplementalProcessCodeProvider",
+        ":StorageTestCodeProvider",
         ":SupplementalProcessStorageTestApp",
     ],
 }
@@ -51,3 +51,13 @@ android_test_helper_app {
     platform_apis: true,
 }
 
+android_test_helper_app {
+    name: "StorageTestCodeProvider",
+    manifest: "codeprovider/StorageTestCodeProvider.xml",
+    defaults: ["platform_app_defaults"],
+    srcs: [
+       "codeprovider/src/**/*.java",
+       ":framework-supplementalprocess-sources",
+    ],
+    platform_apis: true,
+}

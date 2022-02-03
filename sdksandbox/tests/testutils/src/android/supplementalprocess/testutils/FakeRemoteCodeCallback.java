@@ -17,6 +17,7 @@
 package android.supplementalprocess.testutils;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assertWithMessage;
 
 import android.os.Bundle;
 import android.os.IBinder;
@@ -75,7 +76,7 @@ public class FakeRemoteCodeCallback extends IRemoteCodeCallback.Stub {
 
     public IBinder getCodeToken() {
         waitForLatch(mLoadCodeLatch);
-        assertThat(mLoadCodeSuccess).isTrue();
+        assertWithMessage("Failed to load code").that(mLoadCodeSuccess).isTrue();
         return mCodeToken;
     }
 

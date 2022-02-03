@@ -19,7 +19,9 @@ package com.android.tests.supplementalprocess;
 import static com.google.common.truth.Truth.assertThat;
 
 import android.content.Context;
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.supplementalprocess.SupplementalProcessManager;
 import android.supplementalprocess.testutils.FakeRemoteCodeCallback;
 
@@ -33,8 +35,13 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class SupplementalProcessStorageTestApp {
 
-    private static final String CODE_PROVIDER_PACKAGE = "com.android.supplementalprocesscode";
+    private static final String CODE_PROVIDER_PACKAGE =
+            "com.android.tests.codeprovider.storagetest";
     private static final String CODE_PROVIDER_KEY = "code-provider-class";
+    private static final String CODE_PROVIDER_CLASS =
+            "com.android.tests.codeprovider.storagetest.StorageTestCodeProvider";
+
+    private static final String BUNDLE_KEY_PHASE_NAME = "phase-name";
 
     private SupplementalProcessManager mSupplementalProcessManager;
 
@@ -46,13 +53,26 @@ public class SupplementalProcessStorageTestApp {
         assertThat(mSupplementalProcessManager).isNotNull();
     }
 
+    // Run a phase of the test inside the code loaded for this app
+    private void runPhaseInsideCode(IBinder token, String phaseName) {
+        Bundle bundle = new Bundle();
+        bundle.putString(BUNDLE_KEY_PHASE_NAME, phaseName);
+        mSupplementalProcessManager.requestSurfacePackage(token, new Binder(), 0, bundle);
+    }
+
     @Test
-    public void testExample() throws Exception {
+    public void testSupplementalDataAppDirectory_SharedStorageIsUsable() throws Exception {
+        // First load code
         Bundle params = new Bundle();
-        params.putString(CODE_PROVIDER_KEY,
-                "com.android.supplementalprocesscode.SampleCodeProvider");
+        params.putString(CODE_PROVIDER_KEY, CODE_PROVIDER_CLASS);
         FakeRemoteCodeCallback callback = new FakeRemoteCodeCallback();
         mSupplementalProcessManager.loadCode(CODE_PROVIDER_PACKAGE, "1", params, callback);
-        assertThat(callback.isLoadCodeSuccessful()).isFalse();
+        IBinder codeToken = callback.getCodeToken();
+
+        // Run phase inside the code
+        runPhaseInsideCode(codeToken, "testSupplementalDataAppDirectory_SharedStorageIsUsable");
+
+        // Wait for code to finish handling the request
+        assertThat(callback.isRequestSurfacePackageSuccessful()).isFalse();
     }
 }

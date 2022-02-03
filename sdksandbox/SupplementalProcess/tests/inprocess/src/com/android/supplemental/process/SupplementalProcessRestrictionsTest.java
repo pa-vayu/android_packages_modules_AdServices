@@ -23,6 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 import android.content.Context;
 import android.os.SELinux;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -41,6 +42,7 @@ public class SupplementalProcessRestrictionsTest {
      * Tests that supplemental process runs in its own SELinux domain.
      */
     @Test
+    @Ignore
     public void testSepolicyDomain() throws Exception {
         String ctx = SELinux.getContext();
         assertThat(ctx).startsWith("u:r:supplemental_process:s0");
