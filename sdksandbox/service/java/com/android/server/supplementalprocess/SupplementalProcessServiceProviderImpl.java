@@ -24,7 +24,7 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
-import android.os.TransactionTooLargeException;
+import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -93,16 +93,16 @@ class SupplementalProcessServiceProviderImpl implements SupplementalProcessServi
             SupplementalProcessConnection supplementalProcessConnection =
                     new SupplementalProcessConnection(serviceConnection);
 
+            final String processName = "supplemental_process_" + appUid;
             try {
-                boolean bound = mActivityManagerLocal.startAndBindSupplementalProcessService(intent,
-                        serviceConnection, appUid);
+                boolean bound = mActivityManagerLocal.bindSupplementalProcessService(intent,
+                        serviceConnection, appUid, processName, Context.BIND_AUTO_CREATE);
                 if (!bound) {
                     mContext.unbindService(serviceConnection);
                     notifyFailedBinding(serviceConnection);
                     return;
                 }
-            } catch (TransactionTooLargeException e) {
-                Log.e(TAG, "Transaction too large, could not bind to supplemental process");
+            } catch (RemoteException e) {
                 notifyFailedBinding(serviceConnection);
                 return;
             }
