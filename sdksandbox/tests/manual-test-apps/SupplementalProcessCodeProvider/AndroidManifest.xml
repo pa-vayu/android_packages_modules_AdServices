@@ -19,6 +19,7 @@
 
     <application>
         android:hasCode="false"
-        <sdk-library android:name="com.android.supplementalprocesscode" android:versionMajor="1" />
+        <sdk-library android:name="com.android.supplementalprocesscode.v1"
+                     android:versionMajor="1" />
     </application>
 </manifest>

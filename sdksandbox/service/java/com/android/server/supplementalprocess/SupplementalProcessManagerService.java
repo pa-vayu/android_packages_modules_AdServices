@@ -227,8 +227,9 @@ public class SupplementalProcessManagerService extends ISupplementalProcessManag
                         continue;
                     }
 
-                    return pm.getApplicationInfo(sharedLibraryName,
-                                PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
+                    return pm.getApplicationInfo(
+                            sharedLibrary.getDeclaringPackage().getPackageName(),
+                            PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
                 }
             }
             return null;

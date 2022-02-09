@@ -103,7 +103,7 @@ public class MainActivity extends Activity {
             params.putInt(SupplementalProcessServiceImpl.HEIGHT_KEY, mRenderedView.getHeight());
             final RemoteCodeCallbackImpl callback = new RemoteCodeCallbackImpl();
             mSupplementalProcessManager.loadCode(
-                    "com.android.supplementalprocesscode", "1", params, callback);
+                    "com.android.supplementalprocesscode.v1", "1", params, callback);
         });
     }
 

@@ -44,6 +44,7 @@ public class SupplementalProcessManagerTest {
     private static SupplementalProcessManager sSupplementalProcessManager;
     private static final String CODE_PROVIDER_KEY = "code-provider-class";
     private static FakeInitCodeCallback sCallback = new FakeInitCodeCallback();
+    private static final String CODE_PROVDER_NAME = "com.android.supplementalprocesscode.v1";
 
     @BeforeClass
     public static void setup() {
@@ -53,7 +54,7 @@ public class SupplementalProcessManagerTest {
         params.putString(CODE_PROVIDER_KEY,
                 "com.android.supplementalprocesscode.SampleCodeProvider");
         sSupplementalProcessManager.loadCode(
-                    "com.android.supplementalprocesscode", "1", params, sCallback);
+                    CODE_PROVDER_NAME, "1", params, sCallback);
     }
 
     @Test
@@ -68,7 +69,7 @@ public class SupplementalProcessManagerTest {
                 "com.android.supplementalprocesscode.SampleCodeProvider");
         FakeInitCodeCallback cb = new FakeInitCodeCallback();
         sSupplementalProcessManager.loadCode(
-                "com.android.supplementalprocesscode", "1", params, cb);
+                CODE_PROVDER_NAME, "1", params, cb);
         assertThat(cb.getLoadCodeErrorCode())
                 .isEqualTo(SupplementalProcessManager.LOAD_CODE_ALREADY_LOADED);
     }
@@ -92,7 +93,7 @@ public class SupplementalProcessManagerTest {
                 "invalid");
         FakeInitCodeCallback cb = new FakeInitCodeCallback();
         sSupplementalProcessManager.loadCode(
-                "com.android.supplementalprocesscode", "1", params, cb);
+                CODE_PROVDER_NAME, "1", params, cb);
         assertThat(cb.getLoadCodeErrorCode())
                 .isEqualTo(ISupplementalProcessToSupplementalProcessManagerCallback
                         .LOAD_CODE_PROVIDER_INIT_ERROR);
