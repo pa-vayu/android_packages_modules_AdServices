@@ -46,6 +46,10 @@ public final class SupplementalProcessLifecycleHostTest extends BaseHostJUnit4Te
         getDevice().executeShellCommand(String.format("am start -W -n %s/.%s", pkg, activity));
     }
 
+    private void killApp(String pkg) throws Exception {
+        getDevice().executeShellCommand(String.format("am force-stop %s", pkg));
+    }
+
     private String getUidForPackage(String pkg) throws Exception {
         String pid = getDevice().getProcessPid(pkg);
         if (pid == null) {
@@ -78,6 +82,44 @@ public final class SupplementalProcessLifecycleHostTest extends BaseHostJUnit4Te
                 installPackage(apk, "-d");
             }
         }
+    }
+
+    @Test
+    public void testSupplementalProcessIsDestroyedOnAppDestroy() throws Exception {
+        startActivity(APP_PACKAGE, APP_ACTIVITY);
+        String processDump = getDevice().executeAdbCommand("shell", "ps", "-A");
+        assertThat(processDump).contains(APP_PACKAGE);
+        String supplementalProcess = getSupplementalProcessNameForPackage(APP_PACKAGE);
+        assertThat(processDump).contains(supplementalProcess);
+
+        killApp(APP_PACKAGE);
+        processDump = getDevice().executeAdbCommand("shell", "ps", "-A");
+        assertThat(processDump).doesNotContain(APP_PACKAGE);
+        assertThat(processDump).doesNotContain(supplementalProcess);
+    }
+
+    @Test
+    public void testSupplementalProcessIsCreatedPerApp() throws Exception {
+        startActivity(APP_PACKAGE, APP_ACTIVITY);
+        String processDump = getDevice().executeAdbCommand("shell", "ps", "-A");
+        assertThat(processDump).contains(APP_PACKAGE);
+        String supplementalProcess1 = getSupplementalProcessNameForPackage(APP_PACKAGE);
+        assertThat(processDump).contains(supplementalProcess1);
+
+        startActivity(APP_2_PACKAGE, APP_2_ACTIVITY);
+        processDump = getDevice().executeAdbCommand("shell", "ps", "-A");
+        assertThat(processDump).contains(APP_2_PACKAGE);
+        String supplementalProcess2 = getSupplementalProcessNameForPackage(APP_2_PACKAGE);
+        assertThat(processDump).contains(supplementalProcess2);
+        assertThat(processDump).contains(APP_PACKAGE);
+        assertThat(processDump).contains(supplementalProcess1);
+
+        killApp(APP_2_PACKAGE);
+        processDump = getDevice().executeAdbCommand("shell", "ps", "-A");
+        assertThat(processDump).doesNotContain(APP_2_PACKAGE);
+        assertThat(processDump).doesNotContain(supplementalProcess2);
+        assertThat(processDump).contains(APP_PACKAGE);
+        assertThat(processDump).contains(supplementalProcess1);
     }
 
     @Test
