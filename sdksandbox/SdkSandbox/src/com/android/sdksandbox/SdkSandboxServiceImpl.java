@@ -216,10 +216,5 @@ public class SdkSandboxServiceImpl extends Service {
             SdkSandboxServiceImpl.this.loadSdk(
                     sdkToken, applicationInfo, sdkProviderClassName, params, callback);
         }
-
-        @Override
-        public int getUid() {
-            return Process.myUid();
-        }
     }
 }
