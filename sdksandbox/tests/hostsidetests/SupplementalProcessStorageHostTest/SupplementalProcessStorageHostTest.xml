@@ -19,16 +19,21 @@
 
     <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
         <option name="cleanup-apks" value="true" />
-        <option name="test-file-name" value="SupplementalProcessStorageTestApp.apk" />
+        <option name="test-file-name" value="StorageTestCodeProvider.apk" />
     </target_preparer>
 
-    <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
-        <option name="cleanup-apks" value="true" />
-        <option name="test-file-name" value="SupplementalProcessCodeProvider.apk" />
+    <!--
+      ~ TODO(b/214506422) Remove commands which handle hidden APIs when APIs are no longer hidden
+    -->
+    <target_preparer class="com.android.tradefed.targetprep.RunCommandTargetPreparer">
+        <option name="run-command" value="settings put global hidden_api_policy 1" />
+        <option name="teardown-command" value="settings delete global hidden_api_policy" />
     </target_preparer>
 
     <test class="com.android.tradefed.testtype.HostTest" >
-        <option name="class"
-                value="com.android.tests.supplementalprocess.host.SupplementalProcessStorageHostTest" />
+        <option
+            name="class"
+            value="com.android.tests.supplementalprocess.host.SupplementalProcessStorageHostTest"
+        />
     </test>
 </configuration>

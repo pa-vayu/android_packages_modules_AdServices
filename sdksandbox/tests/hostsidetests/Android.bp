@@ -24,18 +24,6 @@ java_test_host {
 }
 
 java_test_host {
-    name: "SupplementalProcessStorageHostTest",
-    srcs: ["src/**/SupplementalProcessStorageHostTest.java"],
-    test_config: "SupplementalProcessStorageHostTest.xml",
-    libs: ["tradefed"],
-    test_suites: ["general-tests"],
-    data: [
-        ":SupplementalProcessCodeProvider",
-        ":SupplementalProcessStorageTestApp",
-    ],
-}
-
-java_test_host {
     name: "SupplementalProcessLifecycleHostTest",
     srcs: ["src/**/SupplementalProcessLifecycleHostTest.java"],
     test_config: "SupplementalProcessLifecycleHostTest.xml",
@@ -47,24 +35,6 @@ java_test_host {
         ":SupplementalProcessTestApp",
         ":SupplementalProcessTestApp2",
     ],
-}
-
-android_test_helper_app {
-    name: "SupplementalProcessStorageTestApp",
-    manifest: "app/SupplementalProcessStorageTestAppManifest.xml",
-    srcs: [
-        "app/src/**/SupplementalProcessStorageTestApp.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
-        ":supplementalprocess-sources",
-    ],
-    static_libs: [
-        "androidx.core_core",
-        "compatibility-device-util-axt",
-        "SupplementalProcessTestUtils",
-    ],
-    test_suites: ["general-tests"],
-    platform_apis: true,
 }
 
 android_test_helper_app {
