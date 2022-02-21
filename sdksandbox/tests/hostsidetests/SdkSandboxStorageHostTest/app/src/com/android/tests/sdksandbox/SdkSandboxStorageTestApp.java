@@ -39,7 +39,7 @@ public class SdkSandboxStorageTestApp {
             "com.android.tests.codeprovider.storagetest";
     private static final String CODE_PROVIDER_KEY = "sdk-provider-class";
     private static final String CODE_PROVIDER_CLASS =
-            "com.android.tests.codeprovider.storagetest.StorageTestCodeProvider";
+            "com.android.tests.codeprovider.storagetest.StorageTestSandboxedSdkProvider";
 
     private static final String BUNDLE_KEY_PHASE_NAME = "phase-name";
 

@@ -30,7 +30,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
 public class StorageTestSandboxedSdkProvider extends SandboxedSdkProvider {
-    private static final String TAG = "StorageTestCodeProvider";
+    private static final String TAG = "StorageTestSandboxedSdkProvider";
     private static final String BUNDLE_KEY_PHASE_NAME = "phase-name";
 
     @Override
@@ -53,14 +53,14 @@ public class StorageTestSandboxedSdkProvider extends SandboxedSdkProvider {
         String phaseName = params.getString(BUNDLE_KEY_PHASE_NAME, "");
         Log.i(TAG, "Handling phase: " + phaseName);
         switch (phaseName) {
-            case "testSupplementalDataAppDirectory_SharedStorageIsUsable":
-                testSupplementalDataAppDirectory_SharedStorageIsUsable();
+            case "testSdkSandboxDataAppDirectory_SharedStorageIsUsable":
+                testSdkSandboxDataAppDirectory_SharedStorageIsUsable();
                 break;
             default:
         }
     }
 
-    private void testSupplementalDataAppDirectory_SharedStorageIsUsable() {
+    private void testSdkSandboxDataAppDirectory_SharedStorageIsUsable() {
         String sharedPath = getSharedStoragePath();
 
         try {
@@ -80,6 +80,6 @@ public class StorageTestSandboxedSdkProvider extends SandboxedSdkProvider {
 
     // TODO(209061627): this should be coming from code context instead
     private String getSharedStoragePath() {
-        return "/data/misc_ce/0/supplemental/com.android.tests.supplementalprocess/shared";
+        return "/data/misc_ce/0/sdksandbox/com.android.tests.sdksandbox/shared";
     }
 }
