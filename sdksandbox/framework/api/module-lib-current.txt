@@ -1,7 +1,7 @@
 // Signature format: 2.0
-package android.supplementalprocess {
+package android.app.sdksandbox {
 
-  public class SupplementalProcessFrameworkInitializer {
+  public class SdkSandboxManagerFrameworkInitializer {
     method public static void registerServiceWrappers();
   }
 

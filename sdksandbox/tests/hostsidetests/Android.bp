@@ -17,57 +17,57 @@ package {
 }
 
 java_test_host {
-    name: "SupplementalProcessHostTest",
-    srcs: ["src/**/SupplementalProcessHostTest.java"],
+    name: "SdkSandboxHostTest",
+    srcs: ["src/**/SdkSandboxHostTest.java"],
     libs: ["tradefed"],
     test_suites: ["general-tests"],
 }
 
 java_test_host {
-    name: "SupplementalProcessLifecycleHostTest",
-    srcs: ["src/**/SupplementalProcessLifecycleHostTest.java"],
-    test_config: "SupplementalProcessLifecycleHostTest.xml",
+    name: "SdkSandboxLifecycleHostTest",
+    srcs: ["src/**/SdkSandboxLifecycleHostTest.java"],
+    test_config: "SdkSandboxLifecycleHostTest.xml",
     libs: ["tradefed"],
     test_suites: ["general-tests"],
     data: [
         ":TestCodeProvider",
         ":TestCodeProvider2",
-        ":SupplementalProcessTestApp",
-        ":SupplementalProcessTestApp2",
+        ":SdkSandboxTestApp",
+        ":SdkSandboxTestApp2",
     ],
 }
 
 android_test_helper_app {
-    name: "SupplementalProcessTestApp",
-    manifest: "app/SupplementalProcessTestAppManifest.xml",
+    name: "SdkSandboxTestApp",
+    manifest: "app/SdkSandboxTestAppManifest.xml",
     defaults: ["platform_app_defaults"],
     platform_apis: true,
     srcs: [
-        "app/src/**/SupplementalProcessTestActivity.java",
+        "app/src/**/SdkSandboxTestActivity.java",
         ":framework-supplementalprocess-sources",
         ":supplementalprocess_aidl",
         ":supplementalprocess-sources",
     ],
     static_libs: [
         "androidx.core_core",
-        "SupplementalProcessTestUtils",
+        "SdkSandboxTestUtils",
     ],
 }
 
 android_test_helper_app {
-    name: "SupplementalProcessTestApp2",
-    manifest: "app/SupplementalProcessTestApp2Manifest.xml",
+    name: "SdkSandboxTestApp2",
+    manifest: "app/SdkSandboxTestApp2Manifest.xml",
     defaults: ["platform_app_defaults"],
     platform_apis: true,
     srcs: [
-        "app/src/**/SupplementalProcessTestActivity2.java",
+        "app/src/**/SdkSandboxTestActivity2.java",
         ":framework-supplementalprocess-sources",
         ":supplementalprocess_aidl",
         ":supplementalprocess-sources",
     ],
     static_libs: [
         "androidx.core_core",
-        "SupplementalProcessTestUtils",
+        "SdkSandboxTestUtils",
     ],
 }
 
@@ -78,7 +78,7 @@ android_test_helper_app {
     // TODO(b/215372846): Create our own signing key.
     certificate: ":cts-keyset-test-b",
     srcs: [
-       "codeprovider/src/**/TestCodeProvider.java",
+       "codeprovider/src/**/TestSandboxedSdkProvider.java",
        ":framework-supplementalprocess-sources",
     ],
     platform_apis: true,
@@ -91,7 +91,7 @@ android_test_helper_app {
     certificate: ":cts-keyset-test-b",
     defaults: ["platform_app_defaults"],
     srcs: [
-       "codeprovider/src/**/TestCodeProvider2.java",
+       "codeprovider/src/**/TestSandboxedSdkProvider2.java",
        ":framework-supplementalprocess-sources",
     ],
     platform_apis: true,

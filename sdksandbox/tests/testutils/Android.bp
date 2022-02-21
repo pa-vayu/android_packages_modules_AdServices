@@ -17,12 +17,12 @@ package {
 }
 
 java_library {
-    name: "SupplementalProcessTestUtils",
+    name: "SdkSandboxTestUtils",
     srcs: [
         "src/**/*.java",
         ":framework-supplementalprocess-sources",
     ],
-    libs: [
+    static_libs: [
         "truth-prebuilt",
     ],
     visibility: [

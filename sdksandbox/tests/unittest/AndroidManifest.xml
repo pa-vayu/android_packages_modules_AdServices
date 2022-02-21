@@ -16,7 +16,7 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.android.server.supplementalprocess.tests" >
+          package="com.android.server.sdksandbox.tests" >
 
     <application android:debuggable="true">
         <uses-library android:name="android.test.runner" />
@@ -25,7 +25,7 @@
     </application>
 
     <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-                     android:targetPackage="com.android.server.supplementalprocess.tests"
-                     android:label="SupplementalProcessServiceManager unit tests"/>
+                     android:targetPackage="com.android.server.sdksandbox.tests"
+                     android:label="SdkSandboxServiceManager unit tests"/>
 </manifest>
 

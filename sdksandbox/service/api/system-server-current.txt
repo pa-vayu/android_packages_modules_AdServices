@@ -1,8 +1,8 @@
 // Signature format: 2.0
-package com.android.server.supplementalprocess {
+package com.android.server.sdksandbox {
 
-  public interface SupplementalProcessManagerLocal {
-    field public static final String SERVICE_INTERFACE = "com.android.supplemental.process.SupplementalProcessService";
+  public interface SdkSandboxManagerLocal {
+    field public static final String SERVICE_INTERFACE = "com.android.sdksandbox.SdkSandboxService";
   }
 
 }

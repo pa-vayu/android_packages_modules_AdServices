@@ -14,16 +14,16 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<configuration description="Config for SupplementalProcessManager end to end tests">
+<configuration description="Config for SdkSandboxManager end to end tests">
     <option name="config-descriptor:metadata" key="component" value="framework"/>
     <option name="config-descriptor:metadata" key="parameter" value="not_instant_app"/>
     <option name="config-descriptor:metadata" key="parameter" value="not_multi_abi"/>
     <option name="config-descriptor:metadata" key="parameter" value="secondary_user"/>
     <target_preparer class="com.android.tradefed.targetprep.suite.SuiteApkInstaller">
         <option name="cleanup-apks" value="true"/>
-        <option name="test-file-name" value="SupplementalProcessCodeProvider.apk"/>
+        <option name="test-file-name" value="SdkSandboxCodeProvider.apk"/>
         <option name="test-file-name" value="CodeProviderWithResources.apk"/>
-        <option name="test-file-name" value="SupplementalProcessManagerTests.apk"/>
+        <option name="test-file-name" value="SdkSandboxManagerTests.apk"/>
     </target_preparer>
   <!--
     ~ TODO(b/214506422) Remove commands which handle hidden APIs when APIs are no longer hidden
@@ -34,6 +34,6 @@
     </target_preparer>
     <test class="com.android.tradefed.testtype.AndroidJUnitTest">
         <option name="hidden-api-checks" value="false"/>
-        <option name="package" value="com.android.tests.supplementalprocess.endtoend"/>
+        <option name="package" value="com.android.tests.sdksandbox.endtoend"/>
     </test>
 </configuration>

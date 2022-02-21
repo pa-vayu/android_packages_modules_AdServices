@@ -17,7 +17,7 @@ package {
 }
 
 android_test {
-    name: "SupplementalProcessManagerTests",
+    name: "SdkSandboxManagerTests",
     srcs: [
         "src/**/*.java",
         ":framework-supplementalprocess-sources",
@@ -33,7 +33,7 @@ android_test {
         "android.test.runner",
     ],
     data: [
-      ":SupplementalProcessCodeProvider",
+      ":SdkSandboxCodeProvider",
       ":CodeProviderWithResources",
     ],
     min_sdk_version: "Tiramisu",

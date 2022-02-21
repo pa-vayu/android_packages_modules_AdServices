@@ -1,19 +1,16 @@
 {
   "presubmit": [
     {
-      "name": "SupplementalProcessManagerServiceUnitTests"
+      "name": "SdkSandboxManagerServiceUnitTests"
     },
     {
-      "name": "SupplementalProcessTests"
+      "name": "SdkSandboxTests"
     },
     {
-      "name": "SupplementalProcessInProcessTests"
+      "name": "SdkSandboxManagerTests"
     },
     {
-      "name": "SupplementalProcessManagerTests"
-    },
-    {
-      "name": "SupplementalProcessLifecycleHostTest"
+      "name": "SdkSandboxLifecycleHostTest"
     }
   ]
 }
