@@ -23,7 +23,7 @@ android_test_helper_app {
     platform_apis: true,
     srcs: [
         "src/**/*.java",
-        ":framework-supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
     ],
     dex_preopt: {
         enabled: true,

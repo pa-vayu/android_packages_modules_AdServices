@@ -20,7 +20,7 @@ java_library {
     name: "SdkSandboxTestUtils",
     srcs: [
         "src/**/*.java",
-        ":framework-supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
     ],
     static_libs: [
         "truth-prebuilt",

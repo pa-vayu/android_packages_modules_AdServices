@@ -17,7 +17,7 @@ package {
 }
 
 filegroup {
-    name: "framework-supplementalprocess-sources",
+    name: "framework-sdksandbox-sources",
     srcs: [
       "java/**/*.aidl",
       "java/**/*.java"
@@ -30,12 +30,12 @@ filegroup {
 }
 
 java_sdk_library {
-    name: "framework-supplementalprocess",
-    srcs: [":framework-supplementalprocess-sources"],
+    name: "framework-sdksandbox",
+    srcs: [":framework-sdksandbox-sources"],
     sdk_version: "module_current",
     defaults: [
         "framework-module-defaults",
-        "supplementalprocess-java-defaults",
+        "sdksandbox-java-defaults",
     ],
     impl_library_visibility: [
         "//packages/modules/SupplementalProcess/service:__subpackages__"

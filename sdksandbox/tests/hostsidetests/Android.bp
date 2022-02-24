@@ -44,9 +44,9 @@ android_test_helper_app {
     platform_apis: true,
     srcs: [
         "app/src/**/SdkSandboxTestActivity.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
-        ":supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
+        ":sdksandbox_aidl",
+        ":sdksandbox-sources",
     ],
     static_libs: [
         "androidx.core_core",
@@ -61,9 +61,9 @@ android_test_helper_app {
     platform_apis: true,
     srcs: [
         "app/src/**/SdkSandboxTestActivity2.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
-        ":supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
+        ":sdksandbox_aidl",
+        ":sdksandbox-sources",
     ],
     static_libs: [
         "androidx.core_core",
@@ -79,7 +79,7 @@ android_test_helper_app {
     certificate: ":cts-keyset-test-b",
     srcs: [
        "codeprovider/src/**/TestSandboxedSdkProvider.java",
-       ":framework-supplementalprocess-sources",
+       ":framework-sdksandbox-sources",
     ],
     platform_apis: true,
 }
@@ -92,7 +92,7 @@ android_test_helper_app {
     defaults: ["platform_app_defaults"],
     srcs: [
        "codeprovider/src/**/TestSandboxedSdkProvider2.java",
-       ":framework-supplementalprocess-sources",
+       ":framework-sdksandbox-sources",
     ],
     platform_apis: true,
 }

@@ -20,8 +20,8 @@ android_test {
     name: "SdkSandboxManagerTests",
     srcs: [
         "src/**/*.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
+        ":framework-sdksandbox-sources",
+        ":sdksandbox_aidl",
     ],
     static_libs: [
         "androidx.test.runner",

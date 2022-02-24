@@ -20,10 +20,10 @@ android_test {
     name: "SdkSandboxManagerServiceUnitTests",
     srcs: [
         "src/**/*.java",
-        ":framework-supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
     ],
     static_libs: [
-        "service-supplementalprocess.impl",
+        "service-sdksandbox.impl",
         "androidx.test.runner",
         "mockito-target-extended-minus-junit4",
         "SdkSandboxTestUtils",

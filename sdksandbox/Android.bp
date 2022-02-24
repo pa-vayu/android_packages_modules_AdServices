@@ -18,7 +18,7 @@ package {
 }
 
 java_defaults {
-    name: "supplementalprocess-java-defaults",
+    name: "sdksandbox-java-defaults",
     lint: {
         error_checks: ["NewApi"],
         strict_updatability_linting: true,

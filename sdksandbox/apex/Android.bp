@@ -41,7 +41,7 @@ android_app_certificate {
 // Encapsulate the contributions made by com.android.supplementalprocess to the bootclasspath.
 bootclasspath_fragment_with_nonpublic_deps {
     name: "com.android.supplementalprocess-bootclasspath-fragment",
-    contents: ["framework-supplementalprocess"],
+    contents: ["framework-sdksandbox"],
     soong_config_variables: {
         include_nonpublic_framework_api: {
             contents: ["framework-supplementalapi"],
@@ -66,14 +66,14 @@ bootclasspath_fragment_with_nonpublic_deps {
 
 systemserverclasspath_fragment {
     name: "com.android.supplementalprocess-systemserverclasspath-fragment",
-    contents: ["service-supplementalprocess"],
+    contents: ["service-sdksandbox"],
     apex_available: ["com.android.supplementalprocess"],
 }
 
 apex {
     name: "com.android.supplementalprocess",
     manifest: "manifest.json",
-    apps: ["SupplementalProcess"],
+    apps: ["SdkSandbox"],
     file_contexts: ":com.android.supplementalprocess-file_contexts",
     key: "com.android.supplementalprocess.key",
     bootclasspath_fragments: ["com.android.supplementalprocess-bootclasspath-fragment"],

@@ -17,27 +17,28 @@ package {
 }
 
 filegroup {
-    name: "supplementalprocess_aidl",
+    name: "sdksandbox_aidl",
     srcs: ["aidl/**/*.aidl"],
     path: "aidl",
 }
 
 filegroup {
-    name: "supplementalprocess-sources",
+    name: "sdksandbox-sources",
     srcs: [
         "src/**/*.java",
     ],
 }
 
 android_app {
-    name: "SupplementalProcess",
+    name: "SdkSandbox",
     srcs: [
-        ":supplementalprocess-sources",
-        ":supplementalprocess_aidl",
+        ":sdksandbox-sources",
+        ":sdksandbox_aidl",
     ],
     libs: [
         "framework-annotations-lib",
-        "framework-supplementalprocess",
+        // TODO(b/212577961): switch to stubs
+        "framework-sdksandbox",
     ],
     static_libs: [
         "androidx.annotation_annotation",
@@ -49,6 +50,6 @@ android_app {
     certificate: "sdk_sandbox",
     apex_available: ["com.android.supplementalprocess"],
     defaults: [
-        "supplementalprocess-java-defaults",
+        "sdksandbox-java-defaults",
     ],
 }

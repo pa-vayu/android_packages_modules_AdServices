@@ -17,7 +17,7 @@ package {
 }
 
 filegroup {
-    name: "service-supplementalprocess-sources",
+    name: "service-sdksandbox-sources",
     srcs: [
         "java/**/*.java",
     ],
@@ -26,20 +26,20 @@ filegroup {
 }
 
 java_sdk_library {
-    name: "service-supplementalprocess",
+    name: "service-sdksandbox",
     srcs: [
-        ":service-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
+        ":service-sdksandbox-sources",
+        ":sdksandbox_aidl",
     ],
     sdk_version: "system_server_current",
     min_sdk_version: "Tiramisu",
     libs: [
-        "framework-supplementalprocess.impl",
+        "framework-sdksandbox.impl",
         "jsr305",
     ],
     defaults: [
         "framework-system-server-module-defaults",
-        "supplementalprocess-java-defaults",
+        "sdksandbox-java-defaults",
     ],
     impl_library_visibility: [
         "//packages/modules/SupplementalProcess/tests/unittest",

@@ -38,9 +38,9 @@ android_test_helper_app {
     manifest: "app/SdkSandboxStorageTestAppManifest.xml",
     srcs: [
         "app/src/**/SdkSandboxStorageTestApp.java",
-        ":framework-supplementalprocess-sources",
-        ":supplementalprocess_aidl",
-        ":supplementalprocess-sources",
+        ":framework-sdksandbox-sources",
+        ":sdksandbox_aidl",
+        ":sdksandbox-sources",
     ],
     static_libs: [
         "androidx.core_core",
@@ -57,7 +57,7 @@ android_test_helper_app {
     defaults: ["platform_app_defaults"],
     srcs: [
        "codeprovider/src/**/*.java",
-       ":framework-supplementalprocess-sources",
+       ":framework-sdksandbox-sources",
     ],
     platform_apis: true,
 }
