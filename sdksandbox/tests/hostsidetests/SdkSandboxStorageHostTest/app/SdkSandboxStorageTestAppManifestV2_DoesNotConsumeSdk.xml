@@ -17,18 +17,16 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.android.tests.sdksandbox"
-    android:versionCode="1"
-    android:versionName="1.0">
+    android:versionCode="2"
+    android:versionName="2.0">
 
     <application>
         <uses-library android:name="android.test.runner" />
-        <uses-sdk-library android:name="com.android.tests.codeprovider.storagetest"
-                android:versionMajor="1" android:certDigest="" />
     </application>
 
     <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-                     android:targetPackage="com.android.tests.sdksandbox"
+                     android:targetPackage="com.android.tests.supplementalprocess"
                      android:label="SupplementalProcessStorageTestApp"/>
 
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 </manifest>
+

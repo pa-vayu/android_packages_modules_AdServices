@@ -41,15 +41,20 @@ import android.util.ArrayMap;
 import androidx.annotation.Nullable;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.android.dx.mockito.inline.extended.ExtendedMockito;
 import com.android.sdksandbox.ISdkSandboxManagerToSdkSandboxCallback;
 import com.android.sdksandbox.ISdkSandboxService;
 import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
+import com.android.server.LocalManagerRegistry;
+import com.android.server.pm.PackageManagerLocal;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
+import org.mockito.MockitoSession;
 
 import java.io.BufferedReader;
 import java.io.FileDescriptor;
@@ -67,6 +72,7 @@ public class SdkSandboxManagerServiceUnitTest {
     private ActivityManager mAmSpy;
     private FakeSdkSandboxService mSdkSandboxService;
     private FakeSdkSandboxProvider mProvider;
+    private MockitoSession mStaticMockSession = null;
 
     private static final String SDK_PROVIDER_PACKAGE = "com.android.codeprovider";
     private static final String SDK_PROVIDER_RESOURCES_PACKAGE =
@@ -75,6 +81,10 @@ public class SdkSandboxManagerServiceUnitTest {
 
     @Before
     public void setup() {
+        mStaticMockSession = ExtendedMockito.mockitoSession()
+            .mockStatic(LocalManagerRegistry.class)
+            .startMocking();
+
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
         Context spyContext = Mockito.spy(context);
 
@@ -88,7 +98,17 @@ public class SdkSandboxManagerServiceUnitTest {
                 Manifest.permission.ACCESS_SHARED_LIBRARIES, Manifest.permission.INSTALL_PACKAGES);
         mSdkSandboxService = new FakeSdkSandboxService();
         mProvider = new FakeSdkSandboxProvider(mSdkSandboxService);
+
+        // Populate LocalManagerRegistry
+        ExtendedMockito.doReturn(Mockito.mock(PackageManagerLocal.class))
+            .when(() -> LocalManagerRegistry.getManager(PackageManagerLocal.class));
+
         mService = new SdkSandboxManagerService(spyContext, mProvider);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mStaticMockSession.finishMocking();
     }
 
     /** Mock the ActivityManager::killUid to avoid SecurityException thrown in test. **/
