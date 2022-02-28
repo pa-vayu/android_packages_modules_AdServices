@@ -16,17 +16,6 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-// TODO(b/21090328): Remove filter after we are ready to.
-soong_config_module_type {
-    name: "bootclasspath_fragment_with_nonpublic_deps",
-    module_type: "bootclasspath_fragment",
-    config_namespace: "ANDROID",
-    bool_variables: ["include_nonpublic_framework_api"],
-    properties: [
-        "contents",
-    ],
-}
-
 apex_key {
     name: "com.android.supplementalprocess.key",
     public_key: "com.android.supplementalprocess.avbpubkey",
@@ -39,14 +28,9 @@ android_app_certificate {
 }
 
 // Encapsulate the contributions made by com.android.supplementalprocess to the bootclasspath.
-bootclasspath_fragment_with_nonpublic_deps {
+bootclasspath_fragment {
     name: "com.android.supplementalprocess-bootclasspath-fragment",
     contents: ["framework-sdksandbox"],
-    soong_config_variables: {
-        include_nonpublic_framework_api: {
-            contents: ["framework-supplementalapi"],
-        }
-    },
     apex_available: ["com.android.supplementalprocess"],
 
     // The bootclasspath_fragments that provide APIs on which this depends.
