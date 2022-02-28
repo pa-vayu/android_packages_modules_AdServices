@@ -34,7 +34,7 @@ public class SdkSandboxTestActivity2 extends Activity {
         params.putString("sdk-provider-class", "com.android.testcode2.TestSandboxedSdkProvider2");
         FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
         sdkSandboxManager.loadSdk(
-                "com.android.testcode2", "1", params, callback);
+                "com.android.testcode2", params, callback);
         if (!callback.isLoadSdkSuccessful()) {
             throw new AssertionError(
                     "Failed to load com.android.testcode2 : " + callback.getLoadSdkErrorCode() + "["

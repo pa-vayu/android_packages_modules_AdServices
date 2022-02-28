@@ -66,7 +66,7 @@ public class SdkSandboxStorageTestApp {
         Bundle params = new Bundle();
         params.putString(CODE_PROVIDER_KEY, CODE_PROVIDER_CLASS);
         FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
-        mSdkSandboxManager.loadSdk(CODE_PROVIDER_PACKAGE, "1", params, callback);
+        mSdkSandboxManager.loadSdk(CODE_PROVIDER_PACKAGE, params, callback);
         IBinder codeToken = callback.getSdkToken();
 
         // Run phase inside the code

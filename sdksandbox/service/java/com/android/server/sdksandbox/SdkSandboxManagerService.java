@@ -30,6 +30,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.SharedLibraryInfo;
 import android.os.Binder;
@@ -130,20 +131,19 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         }
     }
 
-    // TODO(b/208631926): Remove the version parameter.
     @Override
-    public void loadSdk(String name, String version, Bundle params, IRemoteSdkCallback callback) {
+    public void loadSdk(String name, Bundle params, IRemoteSdkCallback callback) {
         final int callingUid = Binder.getCallingUid();
         final long token = Binder.clearCallingIdentity();
         try {
-            loadSdkWithClearIdentity(callingUid, name, version, params, callback);
+            loadSdkWithClearIdentity(callingUid, name, params, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    private void loadSdkWithClearIdentity(int callingUid, String name, String version,
-            Bundle params, IRemoteSdkCallback callback) {
+    private void loadSdkWithClearIdentity(int callingUid, String name, Bundle params,
+            IRemoteSdkCallback callback) {
         // Step 1: create unique identity for the {callingUid, name} pair
         final IBinder sdkToken = mSdkTokenManager.createOrGetSdkToken(callingUid, name);
 
@@ -158,7 +158,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
             }
         }
         // Step 2: fetch the installed code in device
-        final ApplicationInfo info = getSdkInfo(name, version, callingUid);
+        final ApplicationInfo info = getSdkInfo(name, callingUid);
 
         if (info == null) {
             String errorMsg = name + " not found for loading";
@@ -192,8 +192,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         mActivityManager.killUid(sdkSandboxUid, "App " + appUid + " has died");
     }
 
-    ApplicationInfo getSdkInfo(String sharedLibraryName, String sharedLibraryVersion,
-            int callingUid) {
+    ApplicationInfo getSdkInfo(String sharedLibraryName, int callingUid) {
         try {
             PackageManager pm = mContext.getPackageManager();
             String[] packageNames = pm.getPackagesForUid(callingUid);
@@ -211,14 +210,9 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
                         continue;
                     }
 
-                    if (!Long.toString(sharedLibrary.getLongVersion()).equals(
-                            sharedLibraryVersion)) {
-                        continue;
-                    }
-
-                    return pm.getApplicationInfo(
-                            sharedLibrary.getDeclaringPackage().getPackageName(),
+                    PackageInfo packageInfo = pm.getPackageInfo(sharedLibrary.getDeclaringPackage(),
                             PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
+                    return packageInfo.applicationInfo;
                 }
             }
             return null;

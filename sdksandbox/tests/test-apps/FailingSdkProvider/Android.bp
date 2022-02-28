@@ -16,28 +16,14 @@ package {
     default_applicable_licenses: ["Android-Apache-2.0"],
 }
 
-android_test {
-    name: "SdkSandboxManagerTests",
+android_test_helper_app {
+    name: "FailingSdkProvider",
+    defaults: ["platform_app_defaults"],
+    // TODO(b/215372846): Create our own signing key.
+    certificate: ":cts-keyset-test-b",
     srcs: [
-        "src/**/*.java",
-        ":framework-sdksandbox-sources",
-        ":sdksandbox_aidl",
+       "src/**/*.java",
+       ":framework-sdksandbox-sources",
     ],
-    static_libs: [
-        "androidx.test.runner",
-        "truth-prebuilt",
-    ],
-    libs: [
-        "android.test.base",
-        "android.test.mock",
-        "android.test.runner",
-    ],
-    data: [
-      ":SdkSandboxCodeProvider",
-      ":FailingSdkProvider",
-      ":CodeProviderWithResources",
-    ],
-    min_sdk_version: "Tiramisu",
-    target_sdk_version: "current",
-    test_suites: ["general-tests"],
+    platform_apis: true,
 }

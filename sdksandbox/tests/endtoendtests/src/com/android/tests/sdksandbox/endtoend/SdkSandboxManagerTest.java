@@ -56,12 +56,13 @@ public class SdkSandboxManagerTest {
         params.putString(CODE_PROVIDER_KEY,
                 "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, "1", params, sCallback);
+                CODE_PROVDER_NAME, params, sCallback);
     }
 
     @Test
-    @Ignore
     public void loadSdkSuccess() throws Exception {
+        // This should be successful, because this test uses version 1 of the sdk library. If
+        // version 2 is loaded, the test will fail.
         assertThat(sCallback.isLoadSdkSuccessful()).isTrue();
     }
 
@@ -73,7 +74,7 @@ public class SdkSandboxManagerTest {
                 "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         FakeIniSdkCallback cb = new FakeIniSdkCallback();
         sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, "1", params, cb);
+                CODE_PROVDER_NAME, params, cb);
         assertThat(cb.getLoadSdkErrorCode())
                 .isEqualTo(SdkSandboxManager.LOAD_SDK_SDK_ALREADY_LOADED);
     }
@@ -86,7 +87,7 @@ public class SdkSandboxManagerTest {
                 "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         FakeIniSdkCallback cb = new FakeIniSdkCallback();
         sSdkSandboxManager.loadSdk(
-                "nonexistent.shared.lib", "1", params, cb);
+                "nonexistent.shared.lib", params, cb);
         assertThat(cb.getLoadSdkErrorCode())
                 .isEqualTo(SdkSandboxManager.LOAD_SDK_SDK_NOT_FOUND);
     }
@@ -98,7 +99,7 @@ public class SdkSandboxManagerTest {
         params.putString(CODE_PROVIDER_KEY, "invalid");
         FakeIniSdkCallback cb = new FakeIniSdkCallback();
         sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, "1", params, cb);
+                CODE_PROVDER_NAME, params, cb);
         assertThat(cb.getLoadSdkErrorCode())
                 .isEqualTo(ISdkSandboxToSdkSandboxManagerCallback.LOAD_SDK_PROVIDER_INIT_ERROR);
     }
@@ -121,7 +122,7 @@ public class SdkSandboxManagerTest {
         params.putString(CODE_PROVIDER_KEY,
                 "com.android.codeproviderresources.ResourceSandboxedSdkProvider");
         FakeIniSdkCallback callback = new FakeIniSdkCallback();
-        sSdkSandboxManager.loadSdk("com.android.codeproviderresources", "1",
+        sSdkSandboxManager.loadSdk("com.android.codeproviderresources",
                 params, callback);
         assertThat(callback.getErrorMessage()).isNull();
     }

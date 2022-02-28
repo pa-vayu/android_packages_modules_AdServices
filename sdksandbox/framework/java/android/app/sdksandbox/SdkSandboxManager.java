@@ -45,9 +45,9 @@ public class SdkSandboxManager {
     /**
      * Fetches and loads sdk into the sdk sandbox.
      */
-    public void loadSdk(String name, String version, Bundle params, IRemoteSdkCallback callback) {
+    public void loadSdk(String name, Bundle params, IRemoteSdkCallback callback) {
         try {
-            mService.loadSdk(name, version, params, callback);
+            mService.loadSdk(name, params, callback);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }

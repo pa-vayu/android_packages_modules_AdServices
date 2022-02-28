@@ -103,7 +103,7 @@ public class MainActivity extends Activity {
             params.putInt(SdkSandboxServiceImpl.HEIGHT_KEY, mRenderedView.getHeight());
             final RemoteSdkCallbackImpl callback = new RemoteSdkCallbackImpl();
             mSdkSandboxManager.loadSdk(
-                    "com.android.sdksandboxcode.v1", "1", params, callback);
+                    "com.android.sdksandboxcode.v1", params, callback);
         });
     }
 
