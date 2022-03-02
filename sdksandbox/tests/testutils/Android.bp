@@ -26,6 +26,9 @@ java_library {
         "truth-prebuilt",
     ],
     visibility: [
+        // TODO(b/222118402): adjust once code is moved
+        "//packages/modules/AdServices:__subpackages__",
+        // TODO(b/222118402): remove once code is moved
         "//packages/modules/SupplementalProcess/tests:__subpackages__",
     ],
 }

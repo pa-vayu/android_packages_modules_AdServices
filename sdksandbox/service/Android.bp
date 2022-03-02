@@ -45,6 +45,8 @@ java_sdk_library {
         "//packages/modules/AdServices:__subpackages__",
     ],
     impl_library_visibility: [
+        "//packages/modules/AdServices/sdksandbox/tests/unittest",
+        // TODO(222118402): remove once code is moved.
         "//packages/modules/SupplementalProcess/tests/unittest",
         "//frameworks/base/services/tests/mockingservicestests",
     ],
