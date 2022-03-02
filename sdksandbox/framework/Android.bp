@@ -24,7 +24,9 @@ filegroup {
     ],
     visibility: [
         "//frameworks/base",
-        "//packages/modules/SupplementalProcess:__subpackages__"
+        "//packages/modules/AdServices:__subpackages__",
+        // TODO(b/222118402): remove after code is moved
+        "//packages/modules/SupplementalProcess:__subpackages__",
     ],
     path: "java",
 }
@@ -38,7 +40,9 @@ java_sdk_library {
         "sdksandbox-java-defaults",
     ],
     impl_library_visibility: [
-        "//packages/modules/SupplementalProcess/service:__subpackages__"
+        "//packages/modules/AdServices:__subpackages__",
+        // TODO(b/222118402): remove after code is moved
+        "//packages/modules/SupplementalProcess/service:__subpackages__",
     ],
-    apex_available: ["com.android.supplementalprocess"],
+    apex_available: ["com.android.adservices"],
 }

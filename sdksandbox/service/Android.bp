@@ -41,10 +41,13 @@ java_sdk_library {
         "framework-system-server-module-defaults",
         "sdksandbox-java-defaults",
     ],
+    visibility: [
+        "//packages/modules/AdServices:__subpackages__",
+    ],
     impl_library_visibility: [
         "//packages/modules/SupplementalProcess/tests/unittest",
         "//frameworks/base/services/tests/mockingservicestests",
     ],
     installable: true,
-    apex_available: ["com.android.supplementalprocess"],
+    apex_available: ["com.android.adservices"],
 }

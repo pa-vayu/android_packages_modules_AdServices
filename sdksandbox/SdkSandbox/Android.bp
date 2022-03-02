@@ -44,11 +44,14 @@ android_app {
         "androidx.annotation_annotation",
         "androidx.core_core",
     ],
+    visibility: [
+        "//packages/modules/AdServices:__subpackages__",
+    ],
     sdk_version: "system_current",
     min_sdk_version: "Tiramisu",
     updatable: true,
     certificate: "sdk_sandbox",
-    apex_available: ["com.android.supplementalprocess"],
+    apex_available: ["com.android.adservices"],
     defaults: [
         "sdksandbox-java-defaults",
     ],
