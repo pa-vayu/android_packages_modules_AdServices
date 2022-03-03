@@ -35,6 +35,8 @@ import java.util.concurrent.Executor;
  * @hide
  */
 public class TopicsManager {
+    public static final String TOPICS_SERVICE = "topics_service";
+
     private final Context mContext;
     private final ServiceBinder<ITopicsService> mServiceBinder;
 
