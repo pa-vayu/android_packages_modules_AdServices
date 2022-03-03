@@ -55,7 +55,7 @@ public class MainActivity extends Activity {
 
         mLoadButton = findViewById(R.id.load_code_button);
         mRenderButton = findViewById(R.id.request_surface_button);
-        registerLoadCodeProviderButton();
+        registerLoadSdkProviderButton();
         registerLoadSurfacePackageButton();
     }
 
@@ -94,7 +94,7 @@ public class MainActivity extends Activity {
     }
 
 
-    private void registerLoadCodeProviderButton() {
+    private void registerLoadSdkProviderButton() {
         mLoadButton.setOnClickListener(v -> {
             Bundle params = new Bundle();
             params.putString(SdkSandboxServiceImpl.SDK_PROVIDER_KEY,
@@ -114,7 +114,7 @@ public class MainActivity extends Activity {
                         () -> mSdkSandboxManager.requestSurfacePackage(
                                 mToken, new Binder(), getDisplay().getDisplayId(), new Bundle()));
             } else {
-                makeToast("Code is not loaded");
+                makeToast("Sdk is not loaded");
             }
         });
     }
