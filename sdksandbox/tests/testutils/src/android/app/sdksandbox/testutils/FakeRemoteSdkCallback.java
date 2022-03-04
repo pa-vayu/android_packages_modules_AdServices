@@ -76,7 +76,8 @@ public class FakeRemoteSdkCallback extends IRemoteSdkCallback.Stub {
 
     public IBinder getSdkToken() {
         waitForLatch(mLoadSdkLatch);
-        assertWithMessage("Failed to load sdk").that(mLoadSdkSuccess).isTrue();
+        assertWithMessage("Failed to load sdk: " + getLoadSdkErrorMsg())
+            .that(mLoadSdkSuccess).isTrue();
         return mSdkToken;
     }
 
@@ -88,7 +89,6 @@ public class FakeRemoteSdkCallback extends IRemoteSdkCallback.Stub {
 
     public String getLoadSdkErrorMsg() {
         waitForLatch(mLoadSdkLatch);
-        assertThat(mLoadSdkSuccess).isFalse();
         return mErrorMsg;
     }
 

@@ -30,6 +30,7 @@ java_test_host {
     data: [
         ":StorageTestCodeProvider",
         ":SdkSandboxStorageTestApp",
+        ":TestAppAv1",
     ],
 }
 
