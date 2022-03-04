@@ -30,6 +30,7 @@ android_app_certificate {
 apex {
     name: "com.android.adservices",
     manifest: "manifest.json",
+    apps: ["SdkSandbox"],
     file_contexts: ":com.android.adservices-file_contexts",
     key: "com.android.adservices.key",
     bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
@@ -41,14 +42,20 @@ apex {
 
 systemserverclasspath_fragment {
     name: "com.android.adservices-systemserverclasspath-fragment",
-    contents: ["service-adservices"],
+    contents: [
+        "service-adservices",
+        "service-sdksandbox",
+    ],
     apex_available: ["com.android.adservices"],
 }
 
 // Encapsulate the contributions made by com.android.adservices to the bootclasspath.
 bootclasspath_fragment {
     name: "com.android.adservices-bootclasspath-fragment",
-    contents: ["framework-adservices"],
+    contents: [
+        "framework-adservices",
+        "framework-sdksandbox",
+    ],
     apex_available: ["com.android.adservices"],
 
     // The bootclasspath_fragments that provide APIs on which this depends.
