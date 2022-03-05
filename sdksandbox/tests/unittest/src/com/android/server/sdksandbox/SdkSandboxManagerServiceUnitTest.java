@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.app.sdksandbox.IRemoteSdkCallback;
 import android.app.sdksandbox.SandboxedSdkContext;
 import android.app.sdksandbox.SdkSandboxManager;
@@ -55,6 +56,7 @@ import java.io.FileDescriptor;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Objects;
 
 /**
  * Unit tests for {@link SdkSandboxManagerService}.
@@ -62,6 +64,7 @@ import java.io.StringWriter;
 public class SdkSandboxManagerServiceUnitTest {
 
     private SdkSandboxManagerService mService;
+    private ActivityManager mAmSpy;
     private FakeSdkSandboxService mSdkSandboxService;
     private FakeSdkSandboxProvider mProvider;
     private static final String SDK_PROVIDER_PACKAGE = "com.android.codeprovider";
@@ -71,12 +74,24 @@ public class SdkSandboxManagerServiceUnitTest {
     @Before
     public void setup() {
         Context context = InstrumentationRegistry.getInstrumentation().getContext();
+        Context spyContext = Mockito.spy(context);
+
+        ActivityManager am = context.getSystemService(ActivityManager.class);
+        mAmSpy = Mockito.spy(Objects.requireNonNull(am));
+
+        Mockito.when(spyContext.getSystemService(ActivityManager.class)).thenReturn(mAmSpy);
+
         // Required to access <sdk-library> information.
         InstrumentationRegistry.getInstrumentation().getUiAutomation().adoptShellPermissionIdentity(
                 Manifest.permission.ACCESS_SHARED_LIBRARIES, Manifest.permission.INSTALL_PACKAGES);
         mSdkSandboxService = new FakeSdkSandboxService();
         mProvider = new FakeSdkSandboxProvider(mSdkSandboxService);
-        mService = new SdkSandboxManagerService(context, mProvider);
+        mService = new SdkSandboxManagerService(spyContext, mProvider);
+    }
+
+    /** Mock the ActivityManager::killUid to avoid SecurityException thrown in test. **/
+    public void disableKillUid() {
+        Mockito.doNothing().when(mAmSpy).killUid(Mockito.anyInt(), Mockito.anyString());
     }
 
     @Test
@@ -198,6 +213,8 @@ public class SdkSandboxManagerServiceUnitTest {
 
     @Test
     public void testRequestSurfacePackageFailedAfterAppDied() throws Exception {
+        disableKillUid();
+
         FakeRemoteSdkCallback callback = Mockito.spy(new FakeRemoteSdkCallback());
         Mockito.doReturn(Mockito.mock(Binder.class)).when(callback).asBinder();
 
@@ -242,6 +259,8 @@ public class SdkSandboxManagerServiceUnitTest {
 
     @Test
     public void testSupplementalProcessUnbindingWhenAppDied() throws Exception {
+        disableKillUid();
+
         IRemoteSdkCallback.Stub callback = Mockito.spy(IRemoteSdkCallback.Stub.class);
         int callingUid = Binder.getCallingUid();
         assertThat(mProvider.getBoundServiceForApp(callingUid)).isNull();
@@ -336,12 +355,6 @@ public class SdkSandboxManagerServiceUnitTest {
         public void loadSdk(IBinder codeToken, ApplicationInfo info, String codeProviderClassName,
                 Bundle params, ISdkSandboxToSdkSandboxManagerCallback callback) {
             mSdkSandboxToManagerCallback = callback;
-        }
-
-        @Override
-        public int getUid() throws RemoteException {
-            // Prevents call to killUid in test
-            return -1;
         }
 
         void sendLoadCodeSuccessful() throws RemoteException {

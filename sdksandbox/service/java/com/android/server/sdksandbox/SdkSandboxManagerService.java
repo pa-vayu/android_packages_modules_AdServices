@@ -37,6 +37,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.Process;
 import android.os.RemoteException;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -180,26 +181,15 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         }
     }
 
-    // TODO(b/215012578): replace with official API once running in correct UID range
-    private int getSdkSandboxUidForApp(int appUid) {
-        try {
-            return mServiceProvider.getBoundServiceForApp(appUid).getUid();
-        } catch (RemoteException ignored) {
-            return -1;
-        }
-    }
-
     private void onAppDeath(IBinder sdkToken, int appUid) {
         cleanUp(sdkToken);
-        final int sdkSandboxUid = getSdkSandboxUidForApp(appUid);
+        final int sdkSandboxUid = Process.toSdkSandboxUid(appUid);
         mServiceProvider.unbindService(appUid);
         synchronized (mAppLoadedSdkUids) {
             mAppLoadedSdkUids.remove(appUid);
         }
-        if (sdkSandboxUid != -1) {
-            Log.i(TAG, "Killing sdk sandbox process " + sdkSandboxUid);
-            mActivityManager.killUid(sdkSandboxUid, "App " + appUid + " has died");
-        }
+        Log.i(TAG, "Killing sdk sandbox process " + sdkSandboxUid);
+        mActivityManager.killUid(sdkSandboxUid, "App " + appUid + " has died");
     }
 
     ApplicationInfo getSdkInfo(String sharedLibraryName, String sharedLibraryVersion,

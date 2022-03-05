@@ -23,9 +23,7 @@ import android.os.IBinder;
 import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
 
 /** @hide */
-interface ISdkSandboxService {
+oneway interface ISdkSandboxService {
     void loadSdk(IBinder sdkToken, in ApplicationInfo info, in String sdkProviderClassName,
                   in Bundle params, in ISdkSandboxToSdkSandboxManagerCallback callback);
-
-    int getUid();
 }
