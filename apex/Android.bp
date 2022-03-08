@@ -36,8 +36,7 @@ apex {
     bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
     systemserverclasspath_fragments: ["com.android.adservices-systemserverclasspath-fragment"],
     certificate: ":com.android.adservices.certificate",
-    min_sdk_version: "Tiramisu",
-    updatable: true,
+    defaults: ["t-launched-apex-module"],
 }
 
 systemserverclasspath_fragment {
