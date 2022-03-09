@@ -158,6 +158,64 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
     }
 
     @Test
+    public void testSdkSandboxDataAppDirectory_IsDestroyedOnUninstall() throws Exception {
+        // Install the app
+        installPackage(TEST_APP_STORAGE_APK);
+
+        //Uninstall the app
+        uninstallPackage(TEST_APP_STORAGE_PACKAGE);
+
+        // Directory should not exist after uninstall
+        final String cePath = getSdkSandboxCeDataAppPath(0, TEST_APP_STORAGE_PACKAGE);
+        final String dePath = getSdkSandboxDeDataAppPath(0, TEST_APP_STORAGE_PACKAGE);
+        // Verify directory is destoyed
+        assertThat(getDevice().isDirectory(cePath)).isFalse();
+        assertThat(getDevice().isDirectory(dePath)).isFalse();
+    }
+
+    @Test
+    public void testSdkSandboxDataAppDirectory_IsClearedOnClearAppData() throws Exception {
+        // Install the app
+        installPackage(TEST_APP_STORAGE_APK);
+        {
+            // Verify directory is not clear
+            final String ceDataAppSharedPath =
+                    getSdkSandboxCeDataAppSharedPath(0, TEST_APP_STORAGE_PACKAGE);
+            final String[] ceChildren = getDevice().getChildren(ceDataAppSharedPath);
+            {
+                final String fileToDelete = ceDataAppSharedPath + "/deleteme.txt";
+                getDevice().executeShellCommand("echo something to delete > " + fileToDelete);
+                assertThat(getDevice().doesFileExist(fileToDelete)).isTrue();
+            }
+            assertThat(ceChildren.length).isNotEqualTo(0);
+            final String deDataAppSharedPath =
+                    getSdkSandboxDeDataAppSharedPath(0, TEST_APP_STORAGE_PACKAGE);
+            final String[] deChildren = getDevice().getChildren(deDataAppSharedPath);
+            {
+                final String fileToDelete = deDataAppSharedPath + "/deleteme.txt";
+                getDevice().executeShellCommand("echo something to delete > " + fileToDelete);
+                assertThat(getDevice().doesFileExist(fileToDelete)).isTrue();
+            }
+            assertThat(deChildren.length).isNotEqualTo(0);
+        }
+
+        // Clear the app data
+        getDevice().executeShellCommand("pm clear " + TEST_APP_STORAGE_PACKAGE);
+        {
+            // Verify directory is cleared
+            final String ceDataAppSharedPath =
+                    getSdkSandboxCeDataAppSharedPath(0, TEST_APP_STORAGE_PACKAGE);
+            final String[] ceChildren = getDevice().getChildren(ceDataAppSharedPath);
+            assertThat(ceChildren.length).isEqualTo(0);
+            final String deDataAppSharedPath =
+                    getSdkSandboxDeDataAppSharedPath(0, TEST_APP_STORAGE_PACKAGE);
+            final String[] deChildren = getDevice().getChildren(deDataAppSharedPath);
+            assertThat(deChildren.length).isEqualTo(0);
+        }
+    }
+    // TODO(b/221946754): Need to write tests for clearing cache and clearing code cache
+
+    @Test
     public void testSdkSandboxDataAppDirectory_IsUserSpecific() throws Exception {
         // Install first before creating the user
         installPackage(TEST_APP_STORAGE_APK, "--user all");
