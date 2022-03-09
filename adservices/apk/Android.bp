@@ -24,6 +24,7 @@ android_app_certificate {
 android_app {
     name: "AdServicesApk",
     sdk_version: "module_current",
+    min_sdk_version: "Tiramisu",
     certificate: ":com.android.adservices.api.certificate",
     privileged: true,
     srcs: [
@@ -36,4 +37,8 @@ android_app {
     static_libs: [
         "adservices-service-core",
     ],
+    // TODO(b/208705888): Renable tflite.
+    // jni_libs: ["libtensorflowlite_jni"],
+    use_embedded_native_libs: true,
+    apex_available: ["com.android.adservices"],
 }
