@@ -3,6 +3,7 @@ package com.android.server.sdksandbox {
 
   public interface SdkSandboxManagerLocal {
     field public static final String SERVICE_INTERFACE = "com.android.sdksandbox.SdkSandboxService";
+    field public static final String VERIFIER_RECEIVER = "com.android.server.sdksandbox.SdkSandboxVerifierReceiver";
   }
 
 }
