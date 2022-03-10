@@ -2,6 +2,8 @@
 package com.android.server.sdksandbox {
 
   public interface SdkSandboxManagerLocal {
+    method public void enforceAllowedToSendBroadcast(@NonNull android.content.Intent);
+    method public void enforceAllowedToStartActivity(@NonNull android.content.Intent);
     field public static final String SERVICE_INTERFACE = "com.android.sdksandbox.SdkSandboxService";
     field public static final String VERIFIER_RECEIVER = "com.android.server.sdksandbox.SdkSandboxVerifierReceiver";
   }

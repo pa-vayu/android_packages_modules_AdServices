@@ -16,8 +16,10 @@
 
 package com.android.server.sdksandbox;
 
+import android.annotation.NonNull;
 import android.annotation.SdkConstant;
 import android.annotation.SystemApi;
+import android.content.Intent;
 
 /**
  * Exposes APIs to {@code system_server} components outside of the module boundaries.
@@ -32,4 +34,21 @@ public interface SdkSandboxManagerLocal {
 
     @SdkConstant(SdkConstant.SdkConstantType.BROADCAST_INTENT_ACTION)
     String VERIFIER_RECEIVER = "com.android.server.sdksandbox.SdkSandboxVerifierReceiver";
+
+    /**
+     * Enforces that the sdk sandbox process is allowed to broadcast a given intent.
+     *
+     * @param intent the intent to check.
+     * @throws SecurityException if the intent is not allowed to be broadcast.
+     */
+    void enforceAllowedToSendBroadcast(@NonNull Intent intent);
+
+
+    /**
+     * Enforces that the sdk sandbox process is allowed to start an activity with a given intent.
+     *
+     * @param intent the intent to check.
+     * @throws SecurityException if the activity is not allowed to be started.
+     */
+    void enforceAllowedToStartActivity(@NonNull Intent intent);
 }
