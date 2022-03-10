@@ -31,7 +31,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.SharedLibraryInfo;
 import android.os.Binder;
@@ -43,6 +42,7 @@ import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Base64;
@@ -79,6 +79,8 @@ import javax.annotation.concurrent.ThreadSafe;
 public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
     private static final String TAG = "SdkSandboxManager";
+    private static final String PROPERTY_SDK_PROVIDER_CLASS_NAME =
+            "android.sdksandbox.PROPERTY_SDK_PROVIDER_CLASS_NAME";
 
     private final Context mContext;
     private final SdkTokenManager mSdkTokenManager = new SdkTokenManager();
@@ -275,17 +277,24 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
             }
         }
         // Step 2: fetch the installed code in device
-        final ApplicationInfo info = getSdkInfo(name, callingUid);
+        SdkProviderInfo sdkProviderInfo = createSdkProviderInfo(name, callingUid);
 
-        if (info == null) {
-            String errorMsg = name + " not found for loading";
+        String errorMsg = "";
+        if (sdkProviderInfo == null) {
+            errorMsg = name + " not found for loading";
+        } else if (TextUtils.isEmpty(sdkProviderInfo.getSdkProviderClassName())) {
+            errorMsg = name + " did not set " + PROPERTY_SDK_PROVIDER_CLASS_NAME;
+        }
+
+        if (!TextUtils.isEmpty(errorMsg)) {
             Log.w(TAG, errorMsg);
             link.sendLoadSdkErrorToApp(SdkSandboxManager.LOAD_SDK_SDK_NOT_FOUND, errorMsg);
             return;
         }
-        // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
 
-        invokeSdkSandboxServiceToLoadSdk(callingUid, callingPackage, sdkToken, info, params, link);
+        // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
+        invokeSdkSandboxServiceToLoadSdk(callingUid, callingPackage, sdkToken, sdkProviderInfo,
+                params, link);
 
         // Register a death recipient to clean up sdkToken and unbind its service after app dies.
         try {
@@ -321,35 +330,6 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         }
         Log.i(TAG, "Killing sdk sandbox process " + sdkSandboxUid);
         mActivityManager.killUid(sdkSandboxUid, "App " + appUid + " has died");
-    }
-
-    ApplicationInfo getSdkInfo(String sharedLibraryName, int callingUid) {
-        try {
-            PackageManager pm = mContext.getPackageManager();
-            String[] packageNames = pm.getPackagesForUid(callingUid);
-            for (int i = 0; i < packageNames.length; i++) {
-                ApplicationInfo info = pm.getApplicationInfo(
-                        packageNames[i], PackageManager.GET_SHARED_LIBRARY_FILES);
-                List<SharedLibraryInfo> sharedLibraries = info.getSharedLibraryInfos();
-                for (int j = 0; j < sharedLibraries.size(); j++) {
-                    SharedLibraryInfo sharedLibrary = sharedLibraries.get(j);
-                    if (sharedLibrary.getType() != SharedLibraryInfo.TYPE_SDK_PACKAGE) {
-                        continue;
-                    }
-
-                    if (!sharedLibraryName.equals(sharedLibrary.getName())) {
-                        continue;
-                    }
-
-                    PackageInfo packageInfo = pm.getPackageInfo(sharedLibrary.getDeclaringPackage(),
-                            PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES);
-                    return packageInfo.applicationInfo;
-                }
-            }
-            return null;
-        } catch (PackageManager.NameNotFoundException ignored) {
-            return null;
-        }
     }
 
     @Override
@@ -402,12 +382,12 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
 
     private void invokeSdkSandboxServiceToLoadSdk(
-            int callingUid, String callingPackage, IBinder sdkToken, ApplicationInfo info,
+            int callingUid, String callingPackage, IBinder sdkToken, SdkProviderInfo sdkInfo,
             Bundle params, AppAndRemoteSdkLink link) {
         // check first if service already bound
         ISdkSandboxService service = mServiceProvider.getBoundServiceForApp(callingUid);
         if (service != null) {
-            loadSdkForService(callingUid, sdkToken, info, params, link, service);
+            loadSdkForService(callingUid, sdkToken, sdkInfo, params, link, service);
             return;
         }
 
@@ -426,7 +406,8 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
                         // Ensuring the code is not loaded again if connection restarted
                         if (!mIsServiceBound) {
-                            loadSdkForService(callingUid, sdkToken, info, params, link, mService);
+                            loadSdkForService(callingUid, sdkToken, sdkInfo, params, link,
+                                    mService);
                             mIsServiceBound = true;
                         }
                     }
@@ -457,13 +438,13 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     }
 
     private void loadSdkForService(
-            int callingUid, IBinder sdkToken, ApplicationInfo info, Bundle params,
+            int callingUid, IBinder sdkToken, SdkProviderInfo sdkProviderInfo, Bundle params,
             AppAndRemoteSdkLink link, ISdkSandboxService service) {
         try {
-            // TODO(b/208631926): Pass a meaningful value for codeProviderClassName
-            service.loadSdk(sdkToken, info, "", params, link);
+            service.loadSdk(sdkToken, sdkProviderInfo.getApplicationInfo(),
+                    sdkProviderInfo.getSdkProviderClassName(), params, link);
 
-            onSdkLoaded(callingUid, info.uid);
+            onSdkLoaded(callingUid, sdkProviderInfo.getApplicationInfo().uid);
         } catch (RemoteException e) {
             String errorMsg = "Failed to load code";
             Log.w(TAG, errorMsg, e);
@@ -512,6 +493,39 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         } else {
             throw new SecurityException(errorMsg
                     + "the intent's component package name must be non-null.");
+        }
+    }
+
+    private SdkProviderInfo createSdkProviderInfo(String sharedLibraryName, int callingUid) {
+        try {
+            PackageManager pm = mContext.getPackageManager();
+            String[] packageNames = pm.getPackagesForUid(callingUid);
+            for (int i = 0; i < packageNames.length; i++) {
+                ApplicationInfo info = pm.getApplicationInfo(
+                        packageNames[i], PackageManager.GET_SHARED_LIBRARY_FILES);
+                List<SharedLibraryInfo> sharedLibraries = info.getSharedLibraryInfos();
+                for (int j = 0; j < sharedLibraries.size(); j++) {
+                    SharedLibraryInfo sharedLibrary = sharedLibraries.get(j);
+                    if (sharedLibrary.getType() != SharedLibraryInfo.TYPE_SDK_PACKAGE) {
+                        continue;
+                    }
+
+                    if (!sharedLibraryName.equals(sharedLibrary.getName())) {
+                        continue;
+                    }
+
+                    String sdkProviderClassName = pm.getProperty(PROPERTY_SDK_PROVIDER_CLASS_NAME,
+                            sharedLibrary.getDeclaringPackage().getPackageName()).getString();
+
+                    ApplicationInfo applicationInfo = pm.getPackageInfo(
+                            sharedLibrary.getDeclaringPackage(),
+                            PackageManager.MATCH_STATIC_SHARED_AND_SDK_LIBRARIES).applicationInfo;
+                    return new SdkProviderInfo(applicationInfo, sdkProviderClassName);
+                }
+            }
+            return null;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return null;
         }
     }
 
@@ -715,6 +729,28 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
             publishBinderService(SDK_SANDBOX_SERVICE, service);
             LocalManagerRegistry.addManager(
                     SdkSandboxManagerLocal.class, service.getLocalManager());
+        }
+    }
+
+    /**
+     * Class which retrieves and stores the sdkProviderClassName and ApplicationInfo
+     */
+    private class SdkProviderInfo {
+
+        private ApplicationInfo mApplicationInfo;
+        private String mSdkProviderClassName;
+
+        private SdkProviderInfo(ApplicationInfo applicationInfo, String sdkProviderClassName) {
+            mApplicationInfo = applicationInfo;
+            mSdkProviderClassName = sdkProviderClassName;
+        }
+
+        public String getSdkProviderClassName() {
+            return mSdkProviderClassName;
+        }
+
+        public ApplicationInfo getApplicationInfo() {
+            return mApplicationInfo;
         }
     }
 
