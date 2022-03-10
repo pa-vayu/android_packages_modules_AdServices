@@ -336,6 +336,11 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
 
     }
 
+    @Test
+    public void testSdkDataIsAttributedToApp() throws Exception {
+        installPackage(TEST_APP_STORAGE_APK);
+        runPhase("testSdkDataIsAttributedToApp");
+    }
 
     private String getAppCeDataPath(int userId, String packageName) {
         return String.format("/data/user/%d/%s", userId, packageName);
