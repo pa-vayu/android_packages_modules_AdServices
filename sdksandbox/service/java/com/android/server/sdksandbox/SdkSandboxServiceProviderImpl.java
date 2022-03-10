@@ -73,7 +73,8 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
     // TODO(b/214240264): Write E2E tests for checking binding from different apps
     @Override
     @Nullable
-    public void bindService(int appUid, ServiceConnection serviceConnection) {
+    public void bindService(int appUid, String appPackageName,
+            ServiceConnection serviceConnection) {
         synchronized (mLock) {
             if (getBoundServiceForApp(appUid) != null) {
                 Log.i(TAG, "SDK sandbox for " + appUid + " is already bound");
@@ -96,7 +97,8 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
             final String processName = "sdk_sandbox_" + appUid;
             try {
                 boolean bound = mActivityManagerLocal.bindSdkSandboxService(intent,
-                        serviceConnection, appUid, processName, Context.BIND_AUTO_CREATE);
+                        serviceConnection, appUid, appPackageName, processName,
+                        Context.BIND_AUTO_CREATE);
                 if (!bound) {
                     mContext.unbindService(serviceConnection);
                     notifyFailedBinding(serviceConnection);

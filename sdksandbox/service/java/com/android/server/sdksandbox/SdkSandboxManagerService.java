@@ -40,6 +40,7 @@ import android.os.IBinder;
 import android.os.Looper;
 import android.os.Process;
 import android.os.RemoteException;
+import android.os.UserHandle;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
@@ -132,18 +133,20 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     }
 
     @Override
-    public void loadSdk(String name, Bundle params, IRemoteSdkCallback callback) {
+    public void loadSdk(String callingPackage, String name, Bundle params,
+            IRemoteSdkCallback callback) {
         final int callingUid = Binder.getCallingUid();
+        enforceCallingPackage(callingPackage, callingUid);
         final long token = Binder.clearCallingIdentity();
         try {
-            loadSdkWithClearIdentity(callingUid, name, params, callback);
+            loadSdkWithClearIdentity(callingUid, callingPackage, name, params, callback);
         } finally {
             Binder.restoreCallingIdentity(token);
         }
     }
 
-    private void loadSdkWithClearIdentity(int callingUid, String name, Bundle params,
-            IRemoteSdkCallback callback) {
+    private void loadSdkWithClearIdentity(int callingUid, String callingPackage, String name,
+            Bundle params, IRemoteSdkCallback callback) {
         // Step 1: create unique identity for the {callingUid, name} pair
         final IBinder sdkToken = mSdkTokenManager.createOrGetSdkToken(callingUid, name);
 
@@ -168,7 +171,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         }
         // TODO(b/204991850): ensure requested code is included in the AndroidManifest.xml
 
-        invokeSdkSandboxServiceToLoadSdk(callingUid, sdkToken, info, params, link);
+        invokeSdkSandboxServiceToLoadSdk(callingUid, callingPackage, sdkToken, info, params, link);
 
         // Register a death recipient to clean up sdkToken and unbind its service after app dies.
         try {
@@ -178,6 +181,20 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         } catch (RemoteException re) {
             // App has already died, cleanup sdk token and link, and unbind its service
             onAppDeath(sdkToken, callingUid);
+        }
+    }
+
+    private void enforceCallingPackage(String callingPackage, int callingUid) {
+        int packageUid = -1;
+        PackageManager pm = mContext.createContextAsUser(
+                UserHandle.getUserHandleForUid(callingUid), 0).getPackageManager();
+        try {
+            packageUid = pm.getPackageUid(callingPackage, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            throw new SecurityException(callingPackage + " not found");
+        }
+        if (packageUid != callingUid) {
+            throw new SecurityException(callingPackage + " does not belong to uid " + callingUid);
         }
     }
 
@@ -270,9 +287,8 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     }
 
     private void invokeSdkSandboxServiceToLoadSdk(
-            int callingUid, IBinder sdkToken, ApplicationInfo info, Bundle params,
-            AppAndRemoteSdkLink link) {
-
+            int callingUid, String callingPackage, IBinder sdkToken, ApplicationInfo info,
+            Bundle params, AppAndRemoteSdkLink link) {
         // check first if service already bound
         ISdkSandboxService service = mServiceProvider.getBoundServiceForApp(callingUid);
         if (service != null) {
@@ -282,6 +298,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
         mServiceProvider.bindService(
                 callingUid,
+                callingPackage,
                 new ServiceConnection() {
                     private boolean mIsServiceBound = false;
 
@@ -311,7 +328,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
                     public void onBindingDied(ComponentName name) {
                         mServiceProvider.setBoundServiceForApp(callingUid, null);
                         mServiceProvider.unbindService(callingUid);
-                        mServiceProvider.bindService(callingUid, this);
+                        mServiceProvider.bindService(callingUid, callingPackage, this);
                     }
 
                     @Override
