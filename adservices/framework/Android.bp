@@ -33,6 +33,7 @@ java_sdk_library {
     name: "framework-adservices",
     srcs: [":framework-adservices-sources"],
     sdk_version: "module_current",
+    min_sdk_version: "Tiramisu",
     defaults: ["framework-module-defaults"],
     impl_library_visibility: [
         "//packages/modules/AdServices:__subpackages__"

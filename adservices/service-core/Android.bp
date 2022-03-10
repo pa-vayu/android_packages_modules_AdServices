@@ -28,6 +28,7 @@ filegroup {
 java_library {
     name: "adservices-service-core",
     sdk_version: "module_current",
+    min_sdk_version: "Tiramisu",
     srcs: [
         ":adservices-service-core-sources",
     ],
@@ -36,4 +37,9 @@ java_library {
         "framework-adservices.impl",
         "jsr305",
     ],
+    static_libs: [
+        // TODO(b/208705888): Renable tflite.
+        // "tensorflowlite_java",
+    ],
+    apex_available: ["com.android.adservices"],
 }
