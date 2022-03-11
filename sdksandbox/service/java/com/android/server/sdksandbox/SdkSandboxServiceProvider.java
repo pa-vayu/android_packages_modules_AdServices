@@ -31,10 +31,11 @@ import java.io.PrintWriter;
 public interface SdkSandboxServiceProvider {
     /**
      * Bind to and establish a connection with SdkSandbox service.
+     * @param appPackageName is the package of the calling app.
      * @param appUid is the calling app Uid.
      * @param serviceConnection recieves information when service is started and stopped.
      */
-    void bindService(int appUid, ServiceConnection serviceConnection);
+    void bindService(int appUid, String appPackageName, ServiceConnection serviceConnection);
 
     /**
      * Unbind the SdkSandbox service associated with the app.

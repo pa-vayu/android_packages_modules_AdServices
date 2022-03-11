@@ -19,9 +19,11 @@ package com.android.tests.sdksandbox.host;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
 
 import android.cts.install.lib.host.InstallUtilsHost;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4Test;
 
@@ -35,6 +37,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.cert.Certificate;
+import java.util.Arrays;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -295,6 +298,44 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
         assertThat(content).isEqualTo("something to read");
     }
 
+    @Test
+    public void testSdkData_CanBeMovedToDifferentVolume() throws Exception {
+        assumeTrue(isAdoptableStorageSupported());
+
+        installPackage(TEST_APP_STORAGE_APK);
+
+        // Create a new adoptable storage where we will be moving our installed package
+        final String diskId = getAdoptionDisk();
+        try {
+            assertEmpty(getDevice().executeShellCommand("sm partition " + diskId + " private"));
+            final LocalVolumeInfo vol = getAdoptionVolume();
+
+            assertSuccess(getDevice().executeShellCommand(
+                    "pm move-package " + TEST_APP_STORAGE_PACKAGE + " " + vol.uuid));
+
+            // Verify that sdk data is moved
+            for (int i = 0; i < 2; i++) {
+                boolean isCeData = (i == 0) ? true : false;
+                final String sdkDataRootPath = "/mnt/expand/" + vol.uuid
+                        + (isCeData ? "/misc_ce" : "/misc_de") +  "/0/sdksandbox";
+                final String sdkDataPackagePath = sdkDataRootPath + "/" + TEST_APP_STORAGE_PACKAGE;
+                final String sdkDataSharedPath = sdkDataPackagePath + "/" + "shared";
+
+                assertThat(getDevice().isDirectory(sdkDataRootPath)).isTrue();
+                assertThat(getDevice().isDirectory(sdkDataPackagePath)).isTrue();
+                assertThat(getDevice().isDirectory(sdkDataSharedPath)).isTrue();
+
+                assertSelinuxLabel(sdkDataRootPath, "system_data_file");
+                assertSelinuxLabel(sdkDataPackagePath, "system_data_file");
+                assertSelinuxLabel(sdkDataSharedPath, "sdk_sandbox_data_file");
+            }
+        } finally {
+            getDevice().executeShellCommand("sm partition " + diskId + " public");
+            getDevice().executeShellCommand("sm forget all");
+        }
+
+    }
+
 
     private String getAppCeDataPath(int userId, String packageName) {
         return String.format("/data/user/%d/%s", userId, packageName);
@@ -330,6 +371,12 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
     private String getSdkSandboxDeDataAppSharedPath(int userId, String packageName) {
         return String.format(
             "%s/shared", getSdkSandboxDeDataAppPath(userId, packageName));
+    }
+
+    private void assertSelinuxLabel(String path, String label) throws Exception {
+        assertThat(path).isNotNull();
+        final String output = getDevice().executeShellCommand("ls -ldZ " + path);
+        assertThat(output).contains("u:object_r:" + label);
     }
 
     private int createAndStartSecondaryUser() throws Exception {
@@ -412,5 +459,95 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
     private void setSystemProperty(String name, String value) throws Exception {
         assertThat(getDevice().executeShellCommand(
               "setprop " + name + " " + value)).isEqualTo("");
+    }
+
+    private boolean isAdoptableStorageSupported() throws Exception {
+        boolean hasFeature = getDevice().hasFeature("feature:android.software.adoptable_storage");
+        boolean hasFstab = Boolean.parseBoolean(getDevice().executeShellCommand(
+                    "sm has-adoptable").trim());
+        return hasFeature && hasFstab;
+
+    }
+
+    private String getAdoptionDisk() throws Exception {
+        // In the case where we run multiple test we cleanup the state of the device. This
+        // results in the execution of sm forget all which causes the MountService to "reset"
+        // all its knowledge about available drives. This can cause the adoptable drive to
+        // become temporarily unavailable.
+        int attempt = 0;
+        String disks = getDevice().executeShellCommand("sm list-disks adoptable");
+        while ((disks == null || disks.isEmpty()) && attempt++ < 15) {
+            Thread.sleep(1000);
+            disks = getDevice().executeShellCommand("sm list-disks adoptable");
+        }
+
+        if (disks == null || disks.isEmpty()) {
+            throw new AssertionError("Devices that claim to support adoptable storage must have "
+                    + "adoptable media inserted during CTS to verify correct behavior");
+        }
+        return disks.split("\n")[0].trim();
+    }
+
+    private static void assertSuccess(String str) {
+        if (str == null || !str.startsWith("Success")) {
+            throw new AssertionError("Expected success string but found " + str);
+        }
+    }
+
+    private static void assertEmpty(String str) {
+        if (str != null && str.trim().length() > 0) {
+            throw new AssertionError("Expected empty string but found " + str);
+        }
+    }
+
+    private static class LocalVolumeInfo {
+        public String volId;
+        public String state;
+        public String uuid;
+
+        LocalVolumeInfo(String line) {
+            final String[] split = line.split(" ");
+            volId = split[0];
+            state = split[1];
+            uuid = split[2];
+        }
+    }
+
+    private LocalVolumeInfo getAdoptionVolume() throws Exception {
+        String[] lines = null;
+        int attempt = 0;
+        int mounted_count = 0;
+        while (attempt++ < 15) {
+            lines = getDevice().executeShellCommand("sm list-volumes private").split("\n");
+            CLog.w("getAdoptionVolume(): " + Arrays.toString(lines));
+            for (String line : lines) {
+                final LocalVolumeInfo info = new LocalVolumeInfo(line.trim());
+                if (!"private".equals(info.volId)) {
+                    if ("mounted".equals(info.state)) {
+                        // make sure the storage is mounted and stable for a while
+                        mounted_count++;
+                        attempt--;
+                        if (mounted_count >= 3) {
+                            return waitForVolumeReady(info);
+                        }
+                    } else {
+                        mounted_count = 0;
+                    }
+                }
+            }
+            Thread.sleep(1000);
+        }
+        throw new AssertionError("Expected private volume; found " + Arrays.toString(lines));
+    }
+
+    private LocalVolumeInfo waitForVolumeReady(LocalVolumeInfo vol) throws Exception {
+        int attempt = 0;
+        while (attempt++ < 15) {
+            if (getDevice().executeShellCommand("dumpsys package volumes").contains(vol.volId)) {
+                return vol;
+            }
+            Thread.sleep(1000);
+        }
+        throw new AssertionError("Volume not ready " + vol.volId);
     }
 }
