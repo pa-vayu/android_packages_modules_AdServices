@@ -229,6 +229,24 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
     // TODO(b/221946754): Need to write tests for clearing cache and clearing code cache
 
     @Test
+    public void testSdkSandboxDataAppDirectory_IsDestroyedOnUserDeletion() throws Exception {
+        // Create new user
+        mSecondaryUserId = createAndStartSecondaryUser();
+
+        // Install the app
+        installPackage(TEST_APP_STORAGE_APK);
+
+        // delete the new user
+        removeSecondaryUserIfNecessary();
+
+        // Sdk Sandbox root directories should not exist as the user was removed
+        final String ceSdkSandboxDataRootPath = getSdkDataRootPath(mSecondaryUserId, true);
+        final String deSdkSandboxDataRootPath = getSdkDataRootPath(mSecondaryUserId, false);
+        assertThat(getDevice().isDirectory(ceSdkSandboxDataRootPath)).isFalse();
+        assertThat(getDevice().isDirectory(deSdkSandboxDataRootPath)).isFalse();
+    }
+
+    @Test
     public void testSdkSandboxDataAppDirectory_IsUserSpecific() throws Exception {
         // Install first before creating the user
         installPackage(TEST_APP_STORAGE_APK, "--user all");
