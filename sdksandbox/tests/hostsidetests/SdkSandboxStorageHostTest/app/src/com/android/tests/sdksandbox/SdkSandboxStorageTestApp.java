@@ -16,16 +16,25 @@
 
 package com.android.tests.sdksandbox;
 
+import static android.os.storage.StorageManager.UUID_DEFAULT;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import android.app.sdksandbox.SdkSandboxManager;
 import android.app.sdksandbox.testutils.FakeRemoteSdkCallback;
+import android.app.usage.StorageStats;
+import android.app.usage.StorageStatsManager;
 import android.content.Context;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Process;
+import android.os.UserHandle;
 
 import androidx.test.core.app.ApplicationProvider;
+import androidx.test.platform.app.InstrumentationRegistry;
+
+import junit.framework.AssertionFailedError;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -74,5 +83,53 @@ public class SdkSandboxStorageTestApp {
 
         // Wait for code to finish handling the request
         assertThat(callback.isRequestSurfacePackageSuccessful()).isFalse();
+    }
+
+    @Test
+    public void testSdkDataIsAttributedToApp() throws Exception {
+        // First load sdk
+        Bundle params = new Bundle();
+        params.putString(CODE_PROVIDER_KEY, CODE_PROVIDER_CLASS);
+        FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
+        mSdkSandboxManager.loadSdk(CODE_PROVIDER_PACKAGE, params, callback);
+        IBinder codeToken = callback.getSdkToken();
+
+        final StorageStatsManager stats = InstrumentationRegistry.getInstrumentation().getContext()
+                                                .getSystemService(StorageStatsManager.class);
+        int uid = Process.myUid();
+        UserHandle user = Process.myUserHandle();
+
+        // Have the sdk use up space
+        final StorageStats initialAppStats = stats.queryStatsForUid(UUID_DEFAULT, uid);
+        final StorageStats initialUserStats = stats.queryStatsForUser(UUID_DEFAULT, user);
+        runPhaseInsideCode(codeToken, "testSdkDataIsAttributedToApp");
+
+        // Wait for sdk to finish handling the request
+        callback.isRequestSurfacePackageSuccessful();
+        final StorageStats finalAppStats = stats.queryStatsForUid(UUID_DEFAULT, uid);
+        final StorageStats finalUserStats = stats.queryStatsForUser(UUID_DEFAULT, user);
+
+        // Verify the space used with a few hundred kilobytes error margin
+        long deltaAppSize = 2000000;
+        long deltaCacheSize = 1000000;
+        long errorMarginSize = 100000;
+        assertMostlyEquals(deltaAppSize,
+                    finalAppStats.getDataBytes() - initialAppStats.getDataBytes(),
+                           errorMarginSize);
+        assertMostlyEquals(deltaAppSize,
+                    finalUserStats.getDataBytes() - initialUserStats.getDataBytes(),
+                           errorMarginSize);
+        assertMostlyEquals(deltaCacheSize,
+                    finalAppStats.getCacheBytes() - initialAppStats.getCacheBytes(),
+                           errorMarginSize);
+        assertMostlyEquals(deltaCacheSize,
+                    finalUserStats.getCacheBytes() - initialUserStats.getCacheBytes(),
+                           errorMarginSize);
+    }
+
+    public static void assertMostlyEquals(long expected, long actual, long delta) {
+        if (Math.abs(expected - actual) > delta) {
+            throw new AssertionFailedError("Expected roughly " + expected + " but was " + actual);
+        }
     }
 }
