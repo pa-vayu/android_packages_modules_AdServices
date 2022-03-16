@@ -56,6 +56,9 @@ public class StorageTestSandboxedSdkProvider extends SandboxedSdkProvider {
             case "testSdkSandboxDataAppDirectory_SharedStorageIsUsable":
                 testSdkSandboxDataAppDirectory_SharedStorageIsUsable();
                 break;
+            case "testSdkDataIsAttributedToApp":
+                testSdkDataIsAttributedToApp();
+                break;
             default:
         }
     }
@@ -78,8 +81,32 @@ public class StorageTestSandboxedSdkProvider extends SandboxedSdkProvider {
         }
     }
 
+    private void testSdkDataIsAttributedToApp() {
+        final byte[] buffer = new byte[1000000];
+        String sharedPath = getSharedStoragePath();
+        String sharedCachePath = getSharedStorageCachePath();
+        try {
+            Files.createDirectory(Paths.get(sharedPath, "attribution"));
+            Path filepath = Paths.get(sharedPath, "attribution", "file");
+            Files.createFile(filepath);
+            Files.write(filepath, buffer);
+
+            Files.createDirectory(Paths.get(sharedCachePath, "attribution"));
+            Path cacheFilepath = Paths.get(sharedCachePath, "attribution", "file");
+            Files.createFile(cacheFilepath);
+            Files.write(cacheFilepath, buffer);
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+    }
+
     // TODO(209061627): this should be coming from code context instead
     private String getSharedStoragePath() {
         return "/data/misc_ce/0/sdksandbox/com.android.tests.sdksandbox/shared";
+    }
+
+    // TODO(209061627): this should be coming from code context instead
+    private String getSharedStorageCachePath() {
+        return getSharedStoragePath() + "/cache";
     }
 }
