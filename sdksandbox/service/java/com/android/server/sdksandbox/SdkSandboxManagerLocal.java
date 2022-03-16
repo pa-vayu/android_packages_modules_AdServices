@@ -51,4 +51,13 @@ public interface SdkSandboxManagerLocal {
      * @throws SecurityException if the activity is not allowed to be started.
      */
     void enforceAllowedToStartActivity(@NonNull Intent intent);
+
+    /**
+     * Enforces that the sdk sandbox process is allowed to start or bind to a service with a given
+     * intent.
+     *
+     * @param intent the intent to check.
+     * @throws SecurityException if the service is not allowed to be started or bound to.
+     */
+    void enforceAllowedToStartOrBindService(@NonNull Intent intent);
 }

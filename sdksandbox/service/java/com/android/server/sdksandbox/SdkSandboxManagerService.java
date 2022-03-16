@@ -48,6 +48,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 import android.view.SurfaceControlViewHost;
+import android.webkit.WebViewUpdateService;
 
 import com.android.internal.annotations.GuardedBy;
 import com.android.internal.annotations.VisibleForTesting;
@@ -95,6 +96,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
     @GuardedBy("mAppLoadedSdkUids")
     private final ArrayMap<Integer, HashSet<Integer>> mAppLoadedSdkUids = new ArrayMap<>();
+
 
     SdkSandboxManagerService(Context context, SdkSandboxServiceProvider provider) {
         mContext = context;
@@ -485,6 +487,26 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         }
     }
 
+    private void enforceAllowedToStartOrBindService(Intent intent) {
+        ComponentName component = intent.getComponent();
+        String errorMsg = "SDK sandbox uid may not bind to or start a service: ";
+        if (component == null) {
+            throw new SecurityException(errorMsg + "intent component must be non-null.");
+        }
+        String componentPackageName = component.getPackageName();
+        if (componentPackageName != null) {
+            // TODO(b/225327125): Allowlist AdServices.
+            if (!componentPackageName.equals(
+                    WebViewUpdateService.getCurrentWebViewPackageName())) {
+                throw new SecurityException(errorMsg + "component package name "
+                        + componentPackageName + " is not allowlisted.");
+            }
+        } else {
+            throw new SecurityException(errorMsg
+                    + "the intent's component package name must be non-null.");
+        }
+    }
+
     @ThreadSafe
     private static class SdkTokenManager {
         // Keep track of codeToken for each unique pair of {callingUid, name}
@@ -661,8 +683,9 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     }
 
 
-    private static class SdkSandboxManagerLocalImpl
+    private class SdkSandboxManagerLocalImpl
             implements SdkSandboxManagerLocal {
+
         @Override
         public void enforceAllowedToSendBroadcast(@NonNull Intent intent) {
             // TODO(b/209599396): Have a meaningful allowlist.
@@ -675,6 +698,11 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         @Override
         public void enforceAllowedToStartActivity(@NonNull Intent intent) {
             enforceAllowedToSendBroadcast(intent);
+        }
+
+        @Override
+        public void enforceAllowedToStartOrBindService(@NonNull Intent intent) {
+            SdkSandboxManagerService.this.enforceAllowedToStartOrBindService(intent);
         }
     }
 }

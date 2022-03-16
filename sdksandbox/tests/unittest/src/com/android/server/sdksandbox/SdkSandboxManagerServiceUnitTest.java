@@ -29,6 +29,7 @@ import android.app.sdksandbox.IRemoteSdkCallback;
 import android.app.sdksandbox.SandboxedSdkContext;
 import android.app.sdksandbox.SdkSandboxManager;
 import android.app.sdksandbox.testutils.FakeRemoteSdkCallback;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
@@ -365,6 +366,16 @@ public class SdkSandboxManagerServiceUnitTest {
                 () -> mSdkSandboxManagerLocal.enforceAllowedToStartActivity(disallowedIntent));
     }
 
+
+    @Test
+    public void testEnforceAllowedToStartOrBindService() {
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+
+        Intent disallowedIntent = new Intent();
+        disallowedIntent.setComponent(new ComponentName("nonexistent.package", "test"));
+        assertThrows(SecurityException.class,
+                () -> mSdkSandboxManagerLocal.enforceAllowedToStartOrBindService(disallowedIntent));
+    }
 
     /**
      * Fake service provider that returns local instance of {@link SdkSandboxServiceProvider}
