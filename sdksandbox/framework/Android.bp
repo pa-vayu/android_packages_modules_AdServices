@@ -35,6 +35,10 @@ java_sdk_library {
     name: "framework-sdksandbox",
     srcs: [":framework-sdksandbox-sources"],
     sdk_version: "module_current",
+    permitted_packages: [
+        "android.app.sdksandbox",
+        "com.android.sdksandbox",
+    ],
     defaults: [
         "framework-module-defaults",
         "sdksandbox-java-defaults",
