@@ -30,9 +30,44 @@ android_app_certificate {
 apex {
     name: "com.android.adservices",
     manifest: "manifest.json",
+    apps: ["AdServicesApk", "SdkSandbox"],
     file_contexts: ":com.android.adservices-file_contexts",
     key: "com.android.adservices.key",
+    bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
+    systemserverclasspath_fragments: ["com.android.adservices-systemserverclasspath-fragment"],
     certificate: ":com.android.adservices.certificate",
-    min_sdk_version: "Tiramisu",
-    updatable: true,
+    defaults: ["t-launched-apex-module"],
+}
+
+systemserverclasspath_fragment {
+    name: "com.android.adservices-systemserverclasspath-fragment",
+    contents: [
+        "service-adservices",
+        "service-sdksandbox",
+    ],
+    apex_available: ["com.android.adservices"],
+}
+
+// Encapsulate the contributions made by com.android.adservices to the bootclasspath.
+bootclasspath_fragment {
+    name: "com.android.adservices-bootclasspath-fragment",
+    contents: [
+        "framework-adservices",
+        "framework-sdksandbox",
+    ],
+    apex_available: ["com.android.adservices"],
+
+    // The bootclasspath_fragments that provide APIs on which this depends.
+    fragments: [
+        {
+            apex: "com.android.art",
+            module: "art-bootclasspath-fragment",
+        },
+    ],
+
+    // Additional stubs libraries that this fragment's contents use which are
+    // not provided by another bootclasspath_fragment.
+    additional_stubs: [
+        "android-non-updatable",
+    ],
 }
