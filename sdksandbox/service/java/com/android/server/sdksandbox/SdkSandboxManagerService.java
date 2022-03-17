@@ -36,12 +36,14 @@ import android.content.pm.SharedLibraryInfo;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
-import android.os.Looper;
 import android.os.Process;
 import android.os.RemoteException;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.util.ArrayMap;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 import android.view.SurfaceControlViewHost;
@@ -50,10 +52,13 @@ import com.android.internal.annotations.GuardedBy;
 import com.android.sdksandbox.ISdkSandboxManagerToSdkSandboxCallback;
 import com.android.sdksandbox.ISdkSandboxService;
 import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
+import com.android.server.LocalManagerRegistry;
 import com.android.server.SystemService;
+import com.android.server.pm.PackageManagerLocal;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -73,8 +78,10 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
     private final Context mContext;
     private final SdkTokenManager mSdkTokenManager = new SdkTokenManager();
+
     private final ActivityManager mActivityManager;
     private final Handler mHandler;
+    private final PackageManagerLocal mPackageManagerLocal;
 
     private final SdkSandboxServiceProvider mServiceProvider;
 
@@ -90,13 +97,21 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         mContext = context;
         mServiceProvider = provider;
         mActivityManager = mContext.getSystemService(ActivityManager.class);
-        mHandler = new Handler(Looper.getMainLooper());
+        // Start the handler thread.
+        HandlerThread handlerThread = new HandlerThread("SdkSandboxManagerServiceHandler");
+        handlerThread.start();
+        mHandler = new Handler(handlerThread.getLooper());
+        mPackageManagerLocal = LocalManagerRegistry.getManager(PackageManagerLocal.class);
 
-        final IntentFilter packageIntentFilter = new IntentFilter();
-        packageIntentFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
-        packageIntentFilter.addDataScheme("package");
+        registerBroadcastReceivers();
+    }
 
-        BroadcastReceiver packageIntentReceiver = new BroadcastReceiver() {
+    private void registerBroadcastReceivers() {
+        // Register for package removal
+        final IntentFilter packageRemovedIntentFilter = new IntentFilter();
+        packageRemovedIntentFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        packageRemovedIntentFilter.addDataScheme("package");
+        BroadcastReceiver packageRemovedIntentReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 final int sdkUid = intent.getIntExtra(Intent.EXTRA_UID, -1);
@@ -105,12 +120,30 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
                 }
                 final boolean replacing = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false);
                 if (replacing) {
-                    onSdkUpdating(sdkUid);
+                    mHandler.post(() -> onSdkUpdating(sdkUid));
                 }
             }
         };
-        mContext.registerReceiver(packageIntentReceiver, packageIntentFilter,
-                null /* broadcastPermission */, mHandler);
+        mContext.registerReceiver(packageRemovedIntentReceiver, packageRemovedIntentFilter,
+                /*broadcastPermission=*/null, mHandler);
+
+        // Register for package addition and update
+        final IntentFilter packageAddedIntentFilter = new IntentFilter();
+        packageAddedIntentFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        packageAddedIntentFilter.addAction(Intent.ACTION_PACKAGE_REPLACED);
+        packageAddedIntentFilter.addDataScheme("package");
+        BroadcastReceiver packageAddedIntentReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                final String packageName = intent.getData().getSchemeSpecificPart();
+                final int uid = intent.getIntExtra(Intent.EXTRA_UID, -1);
+                // TODO(b/223386213): We could miss broadcast or app might be started before we
+                // handle broadcast.
+                mHandler.post(() -> reconcileSdkData(packageName, uid));
+            }
+        };
+        mContext.registerReceiver(packageAddedIntentReceiver, packageAddedIntentFilter,
+                /*broadcastPermission=*/null, mHandler);
     }
 
     private void onSdkUpdating(int sdkUid) {
@@ -129,6 +162,69 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         for (Integer appUid : appUids) {
             Log.i(TAG, "Killing app " + appUid + " containing code " + sdkUid);
             mActivityManager.killUid(appUid, "Package updating");
+        }
+    }
+
+    /**
+     * Returns list of sdks {@code packageName} uses
+     */
+    @SuppressWarnings("MixedMutabilityReturnType")
+    List<SharedLibraryInfo> getSdksUsed(String packageName) {
+        List<SharedLibraryInfo> result = new ArrayList<>();
+        PackageManager pm = mContext.getPackageManager();
+        try {
+            ApplicationInfo info = pm.getApplicationInfo(
+                    packageName, PackageManager.GET_SHARED_LIBRARY_FILES);
+            List<SharedLibraryInfo> sharedLibraries = info.getSharedLibraryInfos();
+            for (int i = 0; i < sharedLibraries.size(); i++) {
+                final SharedLibraryInfo sharedLib = sharedLibraries.get(i);
+                if (sharedLib.getType() != SharedLibraryInfo.TYPE_SDK_PACKAGE) {
+                    continue;
+                }
+                result.add(sharedLib);
+            }
+            return result;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            return Collections.emptyList();
+        }
+    }
+
+    // Returns a random string.
+    private static String getRandomString() {
+        SecureRandom random = new SecureRandom();
+        byte[] bytes = new byte[16];
+        random.nextBytes(bytes);
+        return Base64.encodeToString(bytes, Base64.URL_SAFE | Base64.NO_WRAP);
+    }
+
+    private void reconcileSdkData(String packageName, int uid) {
+        final List<SharedLibraryInfo> sdksUsed = getSdksUsed(packageName);
+        if (sdksUsed.isEmpty()) {
+            return;
+        }
+        final List<String> subDirNames = new ArrayList();
+        subDirNames.add("shared");
+        for (int i = 0; i < sdksUsed.size(); i++) {
+            final SharedLibraryInfo sdk = sdksUsed.get(i);
+            //TODO(b/223386213): We need to scan the sdk package directory so that we don't create
+            //multiple subdirectories for the same sdk, due to passing different random suffix.
+            subDirNames.add(sdk.getName() + "@" + getRandomString());
+        }
+        final UserHandle userHandle = UserHandle.getUserHandleForUid(uid);
+        final int userId = userHandle.getIdentifier();
+        final int appId = UserHandle.getAppId(uid);
+        final int flags = mContext.getSystemService(UserManager.class).isUserUnlocked(userHandle)
+                ? PackageManagerLocal.FLAG_STORAGE_CE | PackageManagerLocal.FLAG_STORAGE_DE
+                : PackageManagerLocal.FLAG_STORAGE_DE;
+
+        try {
+            //TODO(b/224719352): Pass actual seinfo from here
+            mPackageManagerLocal.reconcileSdkData(/*volumeUuid=*/null, packageName, subDirNames,
+                    userId, appId, /*previousAppId=*/-1, /*seInfo=*/"default", flags);
+        } catch (Exception e) {
+            // We will retry when sdk gets loaded
+            Log.w(TAG, "Failed to reconcileSdkData for " + packageName + " subDirNames: "
+                    + String.join(", ", subDirNames) + " error: " + e.getMessage());
         }
     }
 
