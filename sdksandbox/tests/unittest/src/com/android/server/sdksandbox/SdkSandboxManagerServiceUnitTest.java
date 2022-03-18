@@ -16,9 +16,12 @@
 
 package com.android.server.sdksandbox;
 
+import static com.android.dx.mockito.inline.extended.ExtendedMockito.eq;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 
 import android.Manifest;
 import android.app.ActivityManager;
@@ -27,6 +30,7 @@ import android.app.sdksandbox.SandboxedSdkContext;
 import android.app.sdksandbox.SdkSandboxManager;
 import android.app.sdksandbox.testutils.FakeRemoteSdkCallback;
 import android.content.Context;
+import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -93,6 +97,8 @@ public class SdkSandboxManagerServiceUnitTest {
 
         Mockito.when(spyContext.getSystemService(ActivityManager.class)).thenReturn(mAmSpy);
 
+        ExtendedMockito.doNothing().when(() -> LocalManagerRegistry.addManager(
+                eq(SdkSandboxManagerLocal.class), any(SdkSandboxManagerLocal.class)));
         // Required to access <sdk-library> information.
         InstrumentationRegistry.getInstrumentation().getUiAutomation().adoptShellPermissionIdentity(
                 Manifest.permission.ACCESS_SHARED_LIBRARIES, Manifest.permission.INSTALL_PACKAGES);
@@ -334,6 +340,31 @@ public class SdkSandboxManagerServiceUnitTest {
                 new InputStreamReader(assetManager.open("test-asset.txt")));
         assertThat(reader.readLine()).isEqualTo("This is a test asset");
     }
+
+    /** Tests that only allowed intents may be sent from the sdk sandbox. */
+    @Test
+    public void testEnforceAllowedToSendBroadcast() {
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+        Intent allowedIntent = new Intent(Intent.ACTION_VIEW);
+        mSdkSandboxManagerLocal.enforceAllowedToSendBroadcast(allowedIntent);
+
+        Intent disallowedIntent = new Intent(Intent.ACTION_SCREEN_ON);
+        assertThrows(SecurityException.class,
+                () -> mSdkSandboxManagerLocal.enforceAllowedToSendBroadcast(disallowedIntent));
+    }
+
+    /** Tests that only allowed activities may be started from the sdk sandbox. */
+    @Test
+    public void testEnforceAllowedToStartActivity() {
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+        Intent allowedIntent = new Intent(Intent.ACTION_VIEW);
+        mSdkSandboxManagerLocal.enforceAllowedToStartActivity(allowedIntent);
+
+        Intent disallowedIntent = new Intent(Intent.ACTION_SCREEN_OFF);
+        assertThrows(SecurityException.class,
+                () -> mSdkSandboxManagerLocal.enforceAllowedToStartActivity(disallowedIntent));
+    }
+
 
     /**
      * Fake service provider that returns local instance of {@link SdkSandboxServiceProvider}

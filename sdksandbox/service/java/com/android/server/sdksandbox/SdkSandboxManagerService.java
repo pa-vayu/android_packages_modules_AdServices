@@ -18,6 +18,7 @@ package com.android.server.sdksandbox;
 
 import static android.app.sdksandbox.SdkSandboxManager.SDK_SANDBOX_SERVICE;
 
+import android.annotation.NonNull;
 import android.annotation.RequiresPermission;
 import android.app.ActivityManager;
 import android.app.sdksandbox.IRemoteSdkCallback;
@@ -49,6 +50,7 @@ import android.util.Pair;
 import android.view.SurfaceControlViewHost;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.sdksandbox.ISdkSandboxManagerToSdkSandboxCallback;
 import com.android.sdksandbox.ISdkSandboxService;
 import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
@@ -84,6 +86,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     private final PackageManagerLocal mPackageManagerLocal;
 
     private final SdkSandboxServiceProvider mServiceProvider;
+    private final SdkSandboxManagerLocal mSdkSandboxManagerLocal;
 
     // For communication between app<-ManagerService->RemoteCode for each codeToken
     // TODO(b/208824602): Remove from this map when an app dies.
@@ -102,7 +105,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         handlerThread.start();
         mHandler = new Handler(handlerThread.getLooper());
         mPackageManagerLocal = LocalManagerRegistry.getManager(PackageManagerLocal.class);
-
+        mSdkSandboxManagerLocal = new SdkSandboxManagerLocalImpl();
         registerBroadcastReceivers();
     }
 
@@ -144,6 +147,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         };
         mContext.registerReceiver(packageAddedIntentReceiver, packageAddedIntentFilter,
                 /*broadcastPermission=*/null, mHandler);
+        LocalManagerRegistry.addManager(SdkSandboxManagerLocal.class, mSdkSandboxManagerLocal);
     }
 
     private void onSdkUpdating(int sdkUid) {
@@ -380,6 +384,11 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         writer.println("mServiceProvider:");
         mServiceProvider.dump(writer);
         writer.println();
+    }
+
+    @VisibleForTesting
+    SdkSandboxManagerLocal getSdkSandboxManagerLocal() {
+        return mSdkSandboxManagerLocal;
     }
 
     private void invokeSdkSandboxServiceToLoadSdk(
@@ -648,6 +657,24 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
             SdkSandboxManagerService service =
                     new SdkSandboxManagerService(getContext(), provider);
             publishBinderService(SDK_SANDBOX_SERVICE, service);
+        }
+    }
+
+
+    private static class SdkSandboxManagerLocalImpl
+            implements SdkSandboxManagerLocal {
+        @Override
+        public void enforceAllowedToSendBroadcast(@NonNull Intent intent) {
+            // TODO(b/209599396): Have a meaningful allowlist.
+            if (intent.getAction() != null && !Intent.ACTION_VIEW.equals(intent.getAction())) {
+                throw new SecurityException("Intent " + intent.getAction()
+                        + " may not be broadcast from an SDK sandbox uid");
+            }
+        }
+
+        @Override
+        public void enforceAllowedToStartActivity(@NonNull Intent intent) {
+            enforceAllowedToSendBroadcast(intent);
         }
     }
 }
