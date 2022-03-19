@@ -16,12 +16,9 @@
 
 package com.android.server.sdksandbox;
 
-import static com.android.dx.mockito.inline.extended.ExtendedMockito.eq;
-
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 
 import android.Manifest;
 import android.app.ActivityManager;
@@ -40,6 +37,7 @@ import android.content.res.Resources;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Process;
 import android.os.RemoteException;
 import android.util.ArrayMap;
 
@@ -98,8 +96,6 @@ public class SdkSandboxManagerServiceUnitTest {
 
         Mockito.when(spyContext.getSystemService(ActivityManager.class)).thenReturn(mAmSpy);
 
-        ExtendedMockito.doNothing().when(() -> LocalManagerRegistry.addManager(
-                eq(SdkSandboxManagerLocal.class), any(SdkSandboxManagerLocal.class)));
         // Required to access <sdk-library> information.
         InstrumentationRegistry.getInstrumentation().getUiAutomation().adoptShellPermissionIdentity(
                 Manifest.permission.ACCESS_SHARED_LIBRARIES, Manifest.permission.INSTALL_PACKAGES);
@@ -119,7 +115,7 @@ public class SdkSandboxManagerServiceUnitTest {
     }
 
     /** Mock the ActivityManager::killUid to avoid SecurityException thrown in test. **/
-    public void disableKillUid() {
+    private void disableKillUid() {
         Mockito.doNothing().when(mAmSpy).killUid(Mockito.anyInt(), Mockito.anyString());
     }
 
@@ -345,7 +341,7 @@ public class SdkSandboxManagerServiceUnitTest {
     /** Tests that only allowed intents may be sent from the sdk sandbox. */
     @Test
     public void testEnforceAllowedToSendBroadcast() {
-        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getLocalManager();
         Intent allowedIntent = new Intent(Intent.ACTION_VIEW);
         mSdkSandboxManagerLocal.enforceAllowedToSendBroadcast(allowedIntent);
 
@@ -357,7 +353,7 @@ public class SdkSandboxManagerServiceUnitTest {
     /** Tests that only allowed activities may be started from the sdk sandbox. */
     @Test
     public void testEnforceAllowedToStartActivity() {
-        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getLocalManager();
         Intent allowedIntent = new Intent(Intent.ACTION_VIEW);
         mSdkSandboxManagerLocal.enforceAllowedToStartActivity(allowedIntent);
 
@@ -366,10 +362,94 @@ public class SdkSandboxManagerServiceUnitTest {
                 () -> mSdkSandboxManagerLocal.enforceAllowedToStartActivity(disallowedIntent));
     }
 
+    @Test
+    public void testGetSdkSandboxProcessNameForInstrumentation() throws Exception {
+        final SdkSandboxManagerLocal localManager = mService.getLocalManager();
+        final PackageManager pm =
+                InstrumentationRegistry.getInstrumentation().getContext().getPackageManager();
+        final ApplicationInfo info = pm.getApplicationInfo(TEST_PACKAGE, 0);
+        final String processName = localManager.getSdkSandboxProcessNameForInstrumentation(info);
+        assertThat(processName).isEqualTo(TEST_PACKAGE + "_sdk_sandbox_instr");
+    }
+
+    @Test
+    public void testNotifyInstrumentationStarted_killsSandboxProcess() throws Exception {
+        disableKillUid();
+
+        // First load SDK.
+        FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
+        mService.loadSdk(TEST_PACKAGE, SDK_PROVIDER_PACKAGE, new Bundle(), callback);
+        mSdkSandboxService.sendLoadCodeSuccessful();
+        assertThat(callback.isLoadSdkSuccessful()).isTrue();
+
+        // Check that sdk sandbox for TEST_PACKAGE is bound
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNotNull();
+
+        final SdkSandboxManagerLocal localManager = mService.getLocalManager();
+        localManager.notifyInstrumentationStarted(TEST_PACKAGE, Process.myUid());
+
+        // Verify that sdk sandbox was killed
+        Mockito.verify(mAmSpy, Mockito.only())
+                .killUid(Mockito.eq(Process.toSdkSandboxUid(Process.myUid())), Mockito.anyString());
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNull();
+    }
+
+    @Test
+    public void testNotifyInstrumentationStarted_doesNotAllowLoadSdk() throws Exception {
+        disableKillUid();
+
+        // First load SDK.
+        FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
+        mService.loadSdk(TEST_PACKAGE, SDK_PROVIDER_PACKAGE, new Bundle(), callback);
+        mSdkSandboxService.sendLoadCodeSuccessful();
+        assertThat(callback.isLoadSdkSuccessful()).isTrue();
+
+        // Check that sdk sandbox for TEST_PACKAGE is bound
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNotNull();
+
+        final SdkSandboxManagerLocal localManager = mService.getLocalManager();
+        localManager.notifyInstrumentationStarted(TEST_PACKAGE, Process.myUid());
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNull();
+
+        // Try load again, it should throw SecurityException
+        FakeRemoteSdkCallback callback2 = new FakeRemoteSdkCallback();
+        SecurityException e = assertThrows(
+                SecurityException.class,
+                () -> mService.loadSdk(
+                        TEST_PACKAGE, SDK_PROVIDER_PACKAGE, new Bundle(), callback2));
+        assertThat(e).hasMessageThat()
+                .contains("Currently running instrumentation of this sdk sandbox process");
+    }
+
+    @Test
+    public void testNotifyInstrumentationFinished_canLoadSdk() throws Exception {
+        disableKillUid();
+
+        final SdkSandboxManagerLocal localManager = mService.getLocalManager();
+        localManager.notifyInstrumentationStarted(TEST_PACKAGE, Process.myUid());
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNull();
+
+        FakeRemoteSdkCallback callback = new FakeRemoteSdkCallback();
+        // Try loading, it should throw SecurityException
+        SecurityException e = assertThrows(
+                SecurityException.class,
+                () -> mService.loadSdk(TEST_PACKAGE, SDK_PROVIDER_PACKAGE, new Bundle(), callback));
+        assertThat(e).hasMessageThat()
+                .contains("Currently running instrumentation of this sdk sandbox process");
+
+        localManager.notifyInstrumentationFinished(TEST_PACKAGE, Process.myUid());
+
+        FakeRemoteSdkCallback callback2 = new FakeRemoteSdkCallback();
+        // Now loading should work
+        mService.loadSdk(TEST_PACKAGE, SDK_PROVIDER_PACKAGE, new Bundle(), callback2);
+        mSdkSandboxService.sendLoadCodeSuccessful();
+        assertThat(callback2.isLoadSdkSuccessful()).isTrue();
+        assertThat(mProvider.getBoundServiceForApp(Process.myUid())).isNotNull();
+    }
 
     @Test
     public void testEnforceAllowedToStartOrBindService() {
-        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getSdkSandboxManagerLocal();
+        SdkSandboxManagerLocal mSdkSandboxManagerLocal = mService.getLocalManager();
 
         Intent disallowedIntent = new Intent();
         disallowedIntent.setComponent(new ComponentName("nonexistent.package", "test"));
