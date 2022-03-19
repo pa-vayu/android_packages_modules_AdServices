@@ -18,6 +18,7 @@ package com.android.server.sdksandbox;
 
 import static android.app.sdksandbox.SdkSandboxManager.SDK_SANDBOX_SERVICE;
 
+import android.annotation.NonNull;
 import android.annotation.RequiresPermission;
 import android.app.ActivityManager;
 import android.app.sdksandbox.IRemoteSdkCallback;
@@ -47,8 +48,10 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.Pair;
 import android.view.SurfaceControlViewHost;
+import android.webkit.WebViewUpdateService;
 
 import com.android.internal.annotations.GuardedBy;
+import com.android.internal.annotations.VisibleForTesting;
 import com.android.sdksandbox.ISdkSandboxManagerToSdkSandboxCallback;
 import com.android.sdksandbox.ISdkSandboxService;
 import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
@@ -84,6 +87,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
     private final PackageManagerLocal mPackageManagerLocal;
 
     private final SdkSandboxServiceProvider mServiceProvider;
+    private final SdkSandboxManagerLocal mSdkSandboxManagerLocal;
 
     // For communication between app<-ManagerService->RemoteCode for each codeToken
     // TODO(b/208824602): Remove from this map when an app dies.
@@ -92,6 +96,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
 
     @GuardedBy("mAppLoadedSdkUids")
     private final ArrayMap<Integer, HashSet<Integer>> mAppLoadedSdkUids = new ArrayMap<>();
+
 
     SdkSandboxManagerService(Context context, SdkSandboxServiceProvider provider) {
         mContext = context;
@@ -102,7 +107,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         handlerThread.start();
         mHandler = new Handler(handlerThread.getLooper());
         mPackageManagerLocal = LocalManagerRegistry.getManager(PackageManagerLocal.class);
-
+        mSdkSandboxManagerLocal = new SdkSandboxManagerLocalImpl();
         registerBroadcastReceivers();
     }
 
@@ -144,6 +149,7 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         };
         mContext.registerReceiver(packageAddedIntentReceiver, packageAddedIntentFilter,
                 /*broadcastPermission=*/null, mHandler);
+        LocalManagerRegistry.addManager(SdkSandboxManagerLocal.class, mSdkSandboxManagerLocal);
     }
 
     private void onSdkUpdating(int sdkUid) {
@@ -382,6 +388,11 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         writer.println();
     }
 
+    @VisibleForTesting
+    SdkSandboxManagerLocal getSdkSandboxManagerLocal() {
+        return mSdkSandboxManagerLocal;
+    }
+
     private void invokeSdkSandboxServiceToLoadSdk(
             int callingUid, String callingPackage, IBinder sdkToken, ApplicationInfo info,
             Bundle params, AppAndRemoteSdkLink link) {
@@ -473,6 +484,26 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
         // Now clean up rest of the state which is using an obsolete sdkToken
         synchronized (mAppAndRemoteSdkLinks) {
             mAppAndRemoteSdkLinks.remove(sdkToken);
+        }
+    }
+
+    private void enforceAllowedToStartOrBindService(Intent intent) {
+        ComponentName component = intent.getComponent();
+        String errorMsg = "SDK sandbox uid may not bind to or start a service: ";
+        if (component == null) {
+            throw new SecurityException(errorMsg + "intent component must be non-null.");
+        }
+        String componentPackageName = component.getPackageName();
+        if (componentPackageName != null) {
+            // TODO(b/225327125): Allowlist AdServices.
+            if (!componentPackageName.equals(
+                    WebViewUpdateService.getCurrentWebViewPackageName())) {
+                throw new SecurityException(errorMsg + "component package name "
+                        + componentPackageName + " is not allowlisted.");
+            }
+        } else {
+            throw new SecurityException(errorMsg
+                    + "the intent's component package name must be non-null.");
         }
     }
 
@@ -648,6 +679,30 @@ public class SdkSandboxManagerService extends ISdkSandboxManager.Stub {
             SdkSandboxManagerService service =
                     new SdkSandboxManagerService(getContext(), provider);
             publishBinderService(SDK_SANDBOX_SERVICE, service);
+        }
+    }
+
+
+    private class SdkSandboxManagerLocalImpl
+            implements SdkSandboxManagerLocal {
+
+        @Override
+        public void enforceAllowedToSendBroadcast(@NonNull Intent intent) {
+            // TODO(b/209599396): Have a meaningful allowlist.
+            if (intent.getAction() != null && !Intent.ACTION_VIEW.equals(intent.getAction())) {
+                throw new SecurityException("Intent " + intent.getAction()
+                        + " may not be broadcast from an SDK sandbox uid");
+            }
+        }
+
+        @Override
+        public void enforceAllowedToStartActivity(@NonNull Intent intent) {
+            enforceAllowedToSendBroadcast(intent);
+        }
+
+        @Override
+        public void enforceAllowedToStartOrBindService(@NonNull Intent intent) {
+            SdkSandboxManagerService.this.enforceAllowedToStartOrBindService(intent);
         }
     }
 }
