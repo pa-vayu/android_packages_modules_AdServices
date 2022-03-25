@@ -17,27 +17,25 @@ package {
 }
 
 android_test {
-    name: "CtsAdServicesDeviceTestCases",
-    defaults: ["cts_defaults"],
-    libs: [
-        "android.test.runner",
-        "android.test.base",
+    name: "SdkSandboxInprocessTests",
+
+    target_sdk_version: "Tiramisu",
+    min_sdk_version: "Tiramisu",
+
+    srcs: [
+        "src/**/*.java",
     ],
-    srcs: ["src/**/*.java"],
-    // Tag this module as a cts test artifact
-    test_suites: [
-        "cts",
-        "mts-adservices",
+
+    libs: [
+        "android.test.base",
+        "android.test.runner",
     ],
     static_libs: [
+        "androidx.core_core",
         "androidx.test.rules",
         "androidx.test.ext.truth",
-        "compatibility-device-util-axt",
-        "ctstestrunner-axt",
-        "cts-wm-util",
-        "framework-adservices.impl",
-        "testng",
+        "androidx.test.ext.junit",
+        "truth-prebuilt",
     ],
-    sdk_version: "module_current",
+    test_suites: ["general-tests"],
 }
-

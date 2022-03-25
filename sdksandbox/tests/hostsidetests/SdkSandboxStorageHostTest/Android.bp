@@ -30,13 +30,12 @@ java_test_host {
     data: [
         ":StorageTestCodeProvider",
         ":SdkSandboxStorageTestApp",
-        ":TestAppAv1",
+        ":SdkSandboxStorageTestAppV2_DoesNotConsumeSdk",
     ],
 }
 
-android_test_helper_app {
-    name: "SdkSandboxStorageTestApp",
-    manifest: "app/SdkSandboxStorageTestAppManifest.xml",
+java_defaults {
+    name: "SdkSandboxStorageHostTestDefaults",
     srcs: [
         "app/src/**/SdkSandboxStorageTestApp.java",
         ":framework-sdksandbox-sources",
@@ -50,6 +49,18 @@ android_test_helper_app {
     ],
     test_suites: ["general-tests"],
     platform_apis: true,
+}
+
+android_test_helper_app {
+    name: "SdkSandboxStorageTestApp",
+    manifest: "app/SdkSandboxStorageTestAppManifest.xml",
+    defaults: ["SdkSandboxStorageHostTestDefaults"],
+}
+
+android_test_helper_app {
+    name: "SdkSandboxStorageTestAppV2_DoesNotConsumeSdk",
+    manifest: "app/SdkSandboxStorageTestAppManifestV2_DoesNotConsumeSdk.xml",
+    defaults: ["SdkSandboxStorageHostTestDefaults"],
 }
 
 android_test_helper_app {

@@ -16,19 +16,13 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.android.tests.sdksandbox"
-    android:versionCode="1"
-    android:versionName="1.0">
+          package="com.android.sdksandbox.inprocesstests" >
 
     <application>
         <uses-library android:name="android.test.runner" />
-        <uses-sdk-library android:name="com.android.tests.codeprovider.storagetest"
-                android:versionMajor="1" android:certDigest="" />
     </application>
 
     <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-                     android:targetPackage="com.android.tests.sdksandbox"
-                     android:label="SupplementalProcessStorageTestApp"/>
-
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
+                     android:targetPackage="com.android.sdksandbox.inprocesstests"
+                     android:label="Tests instrumenting Sdk Sandbox process"/>
 </manifest>
