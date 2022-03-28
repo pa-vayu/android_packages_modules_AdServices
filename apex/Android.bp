@@ -39,6 +39,12 @@ apex {
     defaults: ["t-launched-apex-module"],
 }
 
+sdk {
+    name: "adservices-module-sdk",
+    bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
+    systemserverclasspath_fragments: ["com.android.adservices-systemserverclasspath-fragment"],
+}
+
 systemserverclasspath_fragment {
     name: "com.android.adservices-systemserverclasspath-fragment",
     contents: [

@@ -29,7 +29,6 @@ import android.util.Log;
 import android.util.SparseArray;
 
 import com.android.internal.annotations.GuardedBy;
-import com.android.internal.annotations.VisibleForTesting;
 import com.android.sdksandbox.ISdkSandboxService;
 import com.android.server.LocalManagerRegistry;
 import com.android.server.am.ActivityManagerLocal;
@@ -52,7 +51,6 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
     private final Object mLock = new Object();
 
     private final Context mContext;
-    private final Injector mInjector;
     private final ActivityManagerLocal mActivityManagerLocal;
 
     @GuardedBy("mLock")
@@ -60,20 +58,15 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
             new SparseArray<>();
 
     SdkSandboxServiceProviderImpl(Context context) {
-        this(context, new Injector());
-    }
-
-    @VisibleForTesting
-    SdkSandboxServiceProviderImpl(Context context, Injector injector) {
         mContext = context;
-        mInjector = injector;
         mActivityManagerLocal = LocalManagerRegistry.getManager(ActivityManagerLocal.class);
     }
 
     // TODO(b/214240264): Write E2E tests for checking binding from different apps
     @Override
     @Nullable
-    public void bindService(int appUid, ServiceConnection serviceConnection) {
+    public void bindService(int appUid, String appPackageName,
+            ServiceConnection serviceConnection) {
         synchronized (mLock) {
             if (getBoundServiceForApp(appUid) != null) {
                 Log.i(TAG, "SDK sandbox for " + appUid + " is already bound");
@@ -96,7 +89,8 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
             final String processName = "sdk_sandbox_" + appUid;
             try {
                 boolean bound = mActivityManagerLocal.bindSdkSandboxService(intent,
-                        serviceConnection, appUid, processName, Context.BIND_AUTO_CREATE);
+                        serviceConnection, appUid, appPackageName, processName,
+                        Context.BIND_AUTO_CREATE);
                 if (!bound) {
                     mContext.unbindService(serviceConnection);
                     notifyFailedBinding(serviceConnection);
@@ -175,8 +169,8 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
 
     @Nullable
     private ComponentName getServiceComponentName() {
-        final Intent intent = new Intent(mInjector.getServiceClass());
-        intent.setPackage(mInjector.getServicePackage());
+        final Intent intent = new Intent(SdkSandboxManagerLocal.SERVICE_INTERFACE);
+        intent.setPackage(mContext.getPackageManager().getSdkSandboxPackageName());
 
         final ResolveInfo resolveInfo = mContext.getPackageManager().resolveService(intent,
                 PackageManager.GET_SERVICES | PackageManager.GET_META_DATA);
@@ -224,17 +218,6 @@ class SdkSandboxServiceProviderImpl implements SdkSandboxServiceProvider {
 
         boolean isConnected() {
             return mSupplementalProcessService != null;
-        }
-    }
-
-    @VisibleForTesting
-    static class Injector {
-        public String getServicePackage() {
-            return "com.android.sdksandbox";
-        }
-
-        public String getServiceClass() {
-            return SdkSandboxManagerLocal.SERVICE_INTERFACE;
         }
     }
 }

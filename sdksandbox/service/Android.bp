@@ -49,6 +49,7 @@ java_sdk_library {
         // TODO(222118402): remove once code is moved.
         "//packages/modules/SupplementalProcess/tests/unittest",
         "//frameworks/base/services/tests/mockingservicestests",
+        "//frameworks/base/services/tests/wmtests",
     ],
     installable: true,
     apex_available: ["com.android.adservices"],
