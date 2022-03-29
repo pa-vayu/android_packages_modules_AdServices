@@ -19,5 +19,7 @@
 
     <application hasCode="false">
         <sdk-library android:name="com.android.testcode2" android:versionMajor="1" />
+        <property android:name="android.sdksandbox.PROPERTY_SDK_PROVIDER_CLASS_NAME"
+                  android:value="com.android.testcode2.TestSandboxedSdkProvider2" />
     </application>
 </manifest>
