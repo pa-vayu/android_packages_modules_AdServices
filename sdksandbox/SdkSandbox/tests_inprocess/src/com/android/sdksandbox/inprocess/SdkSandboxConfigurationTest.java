@@ -16,6 +16,8 @@
 
 package com.android.sdksandbox.inprocess;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
@@ -31,7 +33,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 
 /**
  * Tests to check some basic properties of the Sdk Sandbox processes.
@@ -96,5 +101,42 @@ public class SdkSandboxConfigurationTest {
         final File dir = ctx.getDataDir();
         assertThat(dir.getAbsolutePath()).isEqualTo(
                 "/data/misc_de/0/sdksandbox/" + TEST_PKG + "/shared");
+    }
+
+    /**
+     * Tests that sdk sandbox process can write to it's CE storage.
+     */
+    @Test
+    public void testCanWriteToDataDir_CE() throws Exception {
+        final Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        try (OutputStreamWriter writer = new OutputStreamWriter(
+                ctx.openFileOutput("random_ce_file", MODE_PRIVATE))) {
+            writer.write("I am an sdk sandbox");
+        }
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(ctx.openFileInput("random_ce_file")))) {
+            String line = reader.readLine();
+            assertThat(line).isEqualTo("I am an sdk sandbox");
+        }
+    }
+
+    /**
+     * Tests that sdk sandbox process can write to it's DE storage.
+     */
+    @Test
+    public void testCanWriteToDataDir_DE() throws Exception {
+        final Context ctx =
+                InstrumentationRegistry.getInstrumentation()
+                        .getTargetContext()
+                        .createDeviceProtectedStorageContext();
+        try (OutputStreamWriter writer = new OutputStreamWriter(
+                ctx.openFileOutput("random_de_file", MODE_PRIVATE))) {
+            writer.write("I am also an sdk sandbox");
+        }
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(ctx.openFileInput("random_de_file")))) {
+            String line = reader.readLine();
+            assertThat(line).isEqualTo("I am also an sdk sandbox");
+        }
     }
 }
