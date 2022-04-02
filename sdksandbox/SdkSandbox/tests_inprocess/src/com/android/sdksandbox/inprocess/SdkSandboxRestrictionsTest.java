@@ -26,6 +26,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaDrm;
 import android.media.UnsupportedSchemeException;
+import android.net.Uri;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -77,5 +78,39 @@ public class SdkSandboxRestrictionsTest {
                 () -> context.startActivity(intent));
         assertThat(thrown).hasMessageThat().contains(
                 "may not be broadcast from an SDK sandbox uid");
+    }
+
+    /**
+     * Tests that sandbox cannot send implicit broadcast intents.
+     */
+    @Test
+    public void testNoImplicitIntents() {
+        final Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        Intent sendIntent = new Intent();
+        sendIntent.setAction(Intent.ACTION_SEND);
+        sendIntent.putExtra(Intent.EXTRA_TEXT, "text");
+        sendIntent.setType("text/plain");
+        sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        SecurityException thrown = assertThrows(
+                SecurityException.class,
+                () -> ctx.startActivity(sendIntent));
+        assertThat(thrown).hasMessageThat().contains("may not be broadcast from an SDK sandbox");
+    }
+
+    /**
+     * Tests that sandbox can open URLs in a browser.
+     */
+    @Test
+    public void testUrlViewIntents() {
+        final Context ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
+
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse("https://www.android.com"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        ctx.startActivity(intent);
     }
 }
