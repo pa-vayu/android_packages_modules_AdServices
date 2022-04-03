@@ -34,6 +34,10 @@ java_sdk_library {
     srcs: [":framework-adservices-sources"],
     sdk_version: "module_current",
     min_sdk_version: "Tiramisu",
+    permitted_packages: [
+        "com.android.adservices",
+        "android.adservices",
+    ],
     defaults: ["framework-module-defaults"],
     impl_library_visibility: [
         "//packages/modules/AdServices:__subpackages__"

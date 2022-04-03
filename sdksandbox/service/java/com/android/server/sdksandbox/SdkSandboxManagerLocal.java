@@ -33,6 +33,11 @@ public interface SdkSandboxManagerLocal {
     @SdkConstant(SdkConstant.SdkConstantType.SERVICE_ACTION)
     String SERVICE_INTERFACE = "com.android.sdksandbox.SdkSandboxService";
 
+    /**
+     * Broadcast Receiver listen to sufficient verifier requests from Package Manager
+     * when install new SDK, to verifier SDK code during installation time
+     * and terminate install if SDK not compatible with privacy sandbox restrictions.
+     */
     @SdkConstant(SdkConstant.SdkConstantType.BROADCAST_INTENT_ACTION)
     String VERIFIER_RECEIVER = "com.android.server.sdksandbox.SdkSandboxVerifierReceiver";
 
