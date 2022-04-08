@@ -40,5 +40,6 @@ android_app {
     // TODO(b/208705888): Renable tflite.
     // jni_libs: ["libtensorflowlite_jni"],
     use_embedded_native_libs: true,
+    required: ["privapp_allowlist_com.android.adservices.api.xml"],
     apex_available: ["com.android.adservices"],
 }
