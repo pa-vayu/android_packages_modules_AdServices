@@ -20,5 +20,7 @@
     <application hasCode="false">
         <sdk-library android:name="com.android.tests.codeprovider.storagetest"
             android:versionMajor="1" />
+        <property android:name="android.sdksandbox.PROPERTY_SDK_PROVIDER_CLASS_NAME"
+                  android:value="com.android.tests.codeprovider.storagetest.StorageTestSandboxedSdkProvider" />
     </application>
 </manifest>

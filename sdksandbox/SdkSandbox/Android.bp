@@ -40,14 +40,11 @@ android_app {
         // TODO(b/212577961): switch to stubs
         "framework-sdksandbox",
     ],
-    static_libs: [
-        "androidx.annotation_annotation",
-        "androidx.core_core",
-    ],
+    static_libs: [], //do not add static libs to SdkSandbox
     visibility: [
         "//packages/modules/AdServices:__subpackages__",
     ],
-    sdk_version: "system_current",
+    sdk_version: "module_current",
     min_sdk_version: "Tiramisu",
     updatable: true,
     certificate: "sdk_sandbox",

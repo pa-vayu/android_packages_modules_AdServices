@@ -35,6 +35,9 @@ apex {
     key: "com.android.adservices.key",
     bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
     systemserverclasspath_fragments: ["com.android.adservices-systemserverclasspath-fragment"],
+    prebuilts: [
+        "privapp_allowlist_com.android.adservices.api.xml"
+    ],
     certificate: ":com.android.adservices.certificate",
     defaults: ["t-launched-apex-module"],
 }
@@ -76,4 +79,22 @@ bootclasspath_fragment {
     additional_stubs: [
         "android-non-updatable",
     ],
+
+    hidden_api: {
+
+        // This module does not contain any split packages.
+        split_packages: [],
+
+        // The following packages and all their subpackages currently only
+        // contain classes from this bootclasspath_fragment. Listing a package
+        // here won't prevent other bootclasspath modules from adding classes in
+        // any of those packages but it will prevent them from adding those
+        // classes into an API surface, e.g. public, system, etc.. Doing so will
+        // result in a build failure due to inconsistent flags.
+        package_prefixes: [
+            "android.adservices",
+            "android.app.sdksandbox",
+            "com.android.adservices",
+        ],
+    },
 }
