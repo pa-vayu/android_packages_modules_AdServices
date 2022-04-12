@@ -2,7 +2,7 @@
 package android.adservices {
 
   public class AdServicesVersion {
-    field public static int API_VERSION;
+    field public static final int API_VERSION;
   }
 
 }
