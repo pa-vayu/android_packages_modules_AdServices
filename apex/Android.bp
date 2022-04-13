@@ -36,6 +36,7 @@ apex {
     bootclasspath_fragments: ["com.android.adservices-bootclasspath-fragment"],
     systemserverclasspath_fragments: ["com.android.adservices-systemserverclasspath-fragment"],
     prebuilts: [
+        "current_sdkinfo",
         "privapp_allowlist_com.android.adservices.api.xml"
     ],
     certificate: ":com.android.adservices.certificate",
