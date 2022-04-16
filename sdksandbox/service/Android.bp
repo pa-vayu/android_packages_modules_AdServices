@@ -33,6 +33,10 @@ java_sdk_library {
     ],
     sdk_version: "system_server_current",
     min_sdk_version: "Tiramisu",
+    permitted_packages: [
+        "com.android.sdksandbox",
+        "com.android.server.sdksandbox",
+    ],
     libs: [
         "framework-sdksandbox.impl",
         "jsr305",
@@ -49,6 +53,7 @@ java_sdk_library {
         // TODO(222118402): remove once code is moved.
         "//packages/modules/SupplementalProcess/tests/unittest",
         "//frameworks/base/services/tests/mockingservicestests",
+        "//frameworks/base/services/tests/wmtests",
     ],
     installable: true,
     apex_available: ["com.android.adservices"],

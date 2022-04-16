@@ -16,7 +16,9 @@
   -->
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.android.tests.sdksandbox" >
+    package="com.android.tests.sdksandbox"
+    android:versionCode="1"
+    android:versionName="1.0">
 
     <application>
         <uses-library android:name="android.test.runner" />
@@ -28,4 +30,5 @@
                      android:targetPackage="com.android.tests.sdksandbox"
                      android:label="SupplementalProcessStorageTestApp"/>
 
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
 </manifest>
