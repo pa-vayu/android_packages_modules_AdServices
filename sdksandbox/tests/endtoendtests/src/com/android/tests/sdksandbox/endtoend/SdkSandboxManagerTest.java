@@ -28,10 +28,7 @@ import android.view.SurfaceControlViewHost;
 
 import androidx.test.InstrumentationRegistry;
 
-import com.android.sdksandbox.ISdkSandboxToSdkSandboxManagerCallback;
-
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -52,11 +49,8 @@ public class SdkSandboxManagerTest {
     public static void setup() {
         Context context = InstrumentationRegistry.getContext();
         sSdkSandboxManager = context.getSystemService(SdkSandboxManager.class);
-        Bundle params = new Bundle();
-        params.putString(CODE_PROVIDER_KEY,
-                "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, params, sCallback);
+                CODE_PROVDER_NAME, new Bundle(), sCallback);
     }
 
     @Test
@@ -67,45 +61,24 @@ public class SdkSandboxManagerTest {
     }
 
     @Test
-    @Ignore
     public void loadSdkFailureAlreadyLoaded() {
-        Bundle params = new Bundle();
-        params.putString(CODE_PROVIDER_KEY,
-                "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         FakeIniSdkCallback cb = new FakeIniSdkCallback();
         sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, params, cb);
+                CODE_PROVDER_NAME, new Bundle(), cb);
         assertThat(cb.getLoadSdkErrorCode())
                 .isEqualTo(SdkSandboxManager.LOAD_SDK_SDK_ALREADY_LOADED);
     }
 
     @Test
-    @Ignore
     public void loadCodeFailureNotFound() {
-        Bundle params = new Bundle();
-        params.putString(CODE_PROVIDER_KEY,
-                "com.android.sdksandboxcode.SampleSandboxedSdkProvider");
         FakeIniSdkCallback cb = new FakeIniSdkCallback();
         sSdkSandboxManager.loadSdk(
-                "nonexistent.shared.lib", params, cb);
+                "nonexistent.shared.lib", new Bundle(), cb);
         assertThat(cb.getLoadSdkErrorCode())
                 .isEqualTo(SdkSandboxManager.LOAD_SDK_SDK_NOT_FOUND);
     }
 
     @Test
-    @Ignore
-    public void loadSdkFailureInitError() {
-        Bundle params = new Bundle();
-        params.putString(CODE_PROVIDER_KEY, "invalid");
-        FakeIniSdkCallback cb = new FakeIniSdkCallback();
-        sSdkSandboxManager.loadSdk(
-                CODE_PROVDER_NAME, params, cb);
-        assertThat(cb.getLoadSdkErrorCode())
-                .isEqualTo(ISdkSandboxToSdkSandboxManagerCallback.LOAD_SDK_PROVIDER_INIT_ERROR);
-    }
-
-    @Test
-    @Ignore
     public void surfacePackageSuccess() throws Exception {
         IBinder codeToken = sCallback.getSdkToken();
         assertThat(codeToken).isNotNull();
@@ -116,7 +89,6 @@ public class SdkSandboxManagerTest {
     }
 
     @Test
-    @Ignore
     public void testResourcesAndAssets() {
         Bundle params = new Bundle();
         params.putString(CODE_PROVIDER_KEY,

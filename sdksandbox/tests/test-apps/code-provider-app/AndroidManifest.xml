@@ -22,5 +22,7 @@
     <application>
         android:hasCode="false"
         <sdk-library android:name="com.android.codeprovider" android:versionMajor="1" />
+        <property android:name="android.sdksandbox.PROPERTY_SDK_PROVIDER_CLASS_NAME"
+                  android:value="test.class.name" />
     </application>
 </manifest>
