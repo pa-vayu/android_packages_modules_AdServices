@@ -20,6 +20,8 @@ import static android.os.storage.StorageManager.UUID_DEFAULT;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static org.junit.Assert.assertThrows;
+
 import android.app.sdksandbox.SdkSandboxManager;
 import android.app.sdksandbox.testutils.FakeRemoteSdkCallback;
 import android.app.usage.StorageStats;
@@ -41,6 +43,10 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+
 @RunWith(JUnit4.class)
 public class SdkSandboxStorageTestApp {
 
@@ -51,6 +57,11 @@ public class SdkSandboxStorageTestApp {
             "com.android.tests.codeprovider.storagetest.StorageTestSandboxedSdkProvider";
 
     private static final String BUNDLE_KEY_PHASE_NAME = "phase-name";
+
+    private static final String JAVA_FILE_PERMISSION_DENIED_MSG =
+            "open failed: EACCES (Permission denied)";
+    private static final String JAVA_FILE_NOT_FOUND_MSG =
+            "open failed: ENOENT (No such file or directory)";
 
     private SdkSandboxManager mSdkSandboxManager;
 
@@ -67,6 +78,12 @@ public class SdkSandboxStorageTestApp {
         Bundle bundle = new Bundle();
         bundle.putString(BUNDLE_KEY_PHASE_NAME, phaseName);
         mSdkSandboxManager.requestSurfacePackage(token, new Binder(), 0, bundle);
+    }
+
+    @Test
+    public void testSdkSandboxDataRootDirectory_IsNotAccessibleByApps() throws Exception {
+        assertDirIsNotAccessible("/data/misc_ce/0/sdksandbox");
+        assertDirIsNotAccessible("/data/misc_de/0/sdksandbox");
     }
 
     @Test
@@ -125,6 +142,18 @@ public class SdkSandboxStorageTestApp {
         assertMostlyEquals(deltaCacheSize,
                     finalUserStats.getCacheBytes() - initialUserStats.getCacheBytes(),
                            errorMarginSize);
+    }
+
+    private static void assertDirIsNotAccessible(String path) {
+        // Trying to access a file that does not exist in that directory, it should return
+        // permission denied not file not found.
+        Exception exception = assertThrows(FileNotFoundException.class, () -> {
+            new FileInputStream(new File(path, "FILE_DOES_NOT_EXIST"));
+        });
+        assertThat(exception.getMessage()).contains(JAVA_FILE_PERMISSION_DENIED_MSG);
+        assertThat(exception.getMessage()).doesNotContain(JAVA_FILE_NOT_FOUND_MSG);
+
+        assertThat(new File(path).canExecute()).isFalse();
     }
 
     public static void assertMostlyEquals(long expected, long actual, long delta) {
