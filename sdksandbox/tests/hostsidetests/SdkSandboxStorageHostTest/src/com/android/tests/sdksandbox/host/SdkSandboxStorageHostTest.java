@@ -103,8 +103,14 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
     public void testSelinuxLabel() throws Exception {
         installPackage(TEST_APP_STORAGE_APK);
 
-        assertSelinuxLabel("/data/misc_ce/0/sdksandbox", "system_data_file");
-        assertSelinuxLabel("/data/misc_de/0/sdksandbox", "system_data_file");
+        assertSelinuxLabel("/data/misc_ce/0/sdksandbox", "sdk_sandbox_system_data_file");
+        assertSelinuxLabel("/data/misc_de/0/sdksandbox", "sdk_sandbox_system_data_file");
+
+        // Check label of /data/misc_{ce,de}/0/sdksandbox/<package-name>
+        assertSelinuxLabel(getSdkDataPackagePath(0, TEST_APP_STORAGE_PACKAGE, true),
+                "sdk_sandbox_system_data_file");
+        assertSelinuxLabel(getSdkDataPackagePath(0, TEST_APP_STORAGE_PACKAGE, false),
+                "sdk_sandbox_system_data_file");
         // Check label of /data/misc_{ce,de}/0/sdksandbox/<app-name>/shared
         assertSelinuxLabel(getSdkDataSharedPath(0, TEST_APP_STORAGE_PACKAGE, true),
                 "sdk_sandbox_data_file");
@@ -139,6 +145,23 @@ public final class SdkSandboxStorageHostTest extends BaseHostJUnit4Test {
             assertThat(getDevice().isDirectory(dePath)).isTrue();
             assertThat(getDevice().isDirectory(cePath)).isTrue();
         }
+    }
+
+    /**
+     * Verify that {@code /data/misc_{ce,de}/<user-id>/sdksandbox} is not accessible by apps
+     */
+    @Test
+    public void testSdkSandboxDataRootDirectory_IsNotAccessibleByApps() throws Exception {
+        // Install the app
+        installPackage(TEST_APP_STORAGE_APK);
+
+        // Verify root directory exists for primary user
+        final String cePath = getSdkDataPackagePath(0, TEST_APP_STORAGE_PACKAGE, true);
+        final String dePath = getSdkDataPackagePath(0, TEST_APP_STORAGE_PACKAGE, false);
+        assertThat(getDevice().isDirectory(dePath)).isTrue();
+        assertThat(getDevice().isDirectory(cePath)).isTrue();
+
+        runPhase("testSdkSandboxDataRootDirectory_IsNotAccessibleByApps");
     }
 
     @Test
