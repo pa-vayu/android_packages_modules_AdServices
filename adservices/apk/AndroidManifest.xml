@@ -21,10 +21,13 @@
     package="com.android.adservices.api">
 
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="Android AdServices"
         android:forceQueryable="true"
         android:directBootAware="true">
+
         <!-- TODO(b/221123093): Support multi-user. -->
         <service android:name="com.android.adservices.topics.TopicsService"
             android:exported="true"
@@ -44,6 +47,15 @@
         <!-- Epoch computation Job. -->
         <service android:name="com.android.adservices.service.topics.EpochJobService"
             android:permission="android.permission.BIND_JOB_SERVICE">
+        </service>
+
+        <!-- Common Service. -->
+        <service android:name="com.android.adservices.common.AdServicesCommonService"
+                 android:exported="true"
+                 android:visibleToInstantApps="false">
+            <intent-filter android:priority="1">
+                <action android:name="android.adservices.AD_SERVICES_COMMON_SERVICE"/>
+            </intent-filter>
         </service>
     </application>
 </manifest>
